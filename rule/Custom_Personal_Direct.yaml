@@ -1,5 +1,5 @@
 # 个人直连规则库
-# 个人明确需要直连访问的网站和服务
+# 请在此处添加你需要直连的域名
 
 payload:
   - DOMAIN-REGEX,^dl-[A-Za-z0-9-]+\.mypikpak\.com$

@@ -1,5 +1,5 @@
 # 个人下载代理规则库
-# 个人明确需要直连访问的网站和服务
+# 用于下载流量的代理
 
 payload:
   - DOMAIN-SUFFIX,nexus-cdn.com
@@ -8,4 +8,6 @@ payload:
   - DOMAIN-SUFFIX,bunkr.ru
   - DOMAIN-SUFFIX,bunkr.is
   - DOMAIN-SUFFIX,bunkr.su
-  - DOMAIN-KEYWORD,bunkr
+  # 4Chan
+  - DOMAIN-KEYWORD,4cdn
+  - DOMAIN-KEYWORD,4chan
