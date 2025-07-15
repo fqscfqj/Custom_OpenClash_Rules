@@ -4,5 +4,7 @@
 payload:
   - DOMAIN-SUFFIX,nexus-cdn.com
   - DOMAIN-SUFFIX,loverslab.com
-  - DOMAIN-SUFFIX,gofile.*
-  - DOMAIN-SUFFIX,bunkr.*
+  - DOMAIN-SUFFIX,gofile.io
+  - DOMAIN-SUFFIX,bunkr.ru
+  - DOMAIN-SUFFIX,bunkr.is
+  - DOMAIN-SUFFIX,bunkr.su
