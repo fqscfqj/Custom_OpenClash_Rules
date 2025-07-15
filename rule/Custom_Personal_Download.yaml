@@ -8,3 +8,4 @@ payload:
   - DOMAIN-SUFFIX,bunkr.ru
   - DOMAIN-SUFFIX,bunkr.is
   - DOMAIN-SUFFIX,bunkr.su
+  - DOMAIN-KEYWORD,bunkr
