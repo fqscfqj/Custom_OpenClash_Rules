@@ -1,0 +1,7 @@
+# 个人直连规则库
+# 个人明确需要直连访问的网站和服务
+
+payload:
+  - DOMAIN-REGEX,^dl-[A-Za-z0-9-]+\.mypikpak\.com$
+  - DOMAIN-KEYWORD,207769
+  - DOMAIN-KEYWORD,m-team

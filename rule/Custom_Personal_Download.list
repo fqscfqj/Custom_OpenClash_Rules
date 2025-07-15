@@ -1,7 +1,0 @@
-# 个人下载代理规则库
-# 个人明确需要直连访问的网站和服务
-
-DOMAIN-SUFFIX,nexus-cdn.com
-DOMAIN-SUFFIX,loverslab.com
-DOMAIN-SUFFIX,gofile.io
-DOMAIN-SUFFIX,bunkr.media
