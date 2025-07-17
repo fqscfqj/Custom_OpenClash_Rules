@@ -2,9 +2,10 @@
 
 payload:
   - DOMAIN-REGEX,^dl-[A-Za-z0-9-]+\.mypikpak\.com$
-  - DOMAIN-KEYWORD,207769
-  - DOMAIN-KEYWORD,20776969
+  - DOMAIN-SUFFIX,*.207769.xyz
+  - DOMAIN-SUFFIX,linux.do
   - DOMAIN-KEYWORD,m-team
+
   - GEOSITE,apple
   - GEOSITE,category-speedtest
   - GEOSITE,category-games-cn
