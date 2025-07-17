@@ -1,9 +1,6 @@
 # 个人下载代理规则库
-# 用于下载流量的代理
 
 payload:
-  - DOMAIN-SUFFIX,nexus-cdn.com
-  - DOMAIN-SUFFIX,loverslab.com
   - DOMAIN-SUFFIX,gofile.io
   - DOMAIN-SUFFIX,bunkr.ru
   - DOMAIN-SUFFIX,bunkr.is
