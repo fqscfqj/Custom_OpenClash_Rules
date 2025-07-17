@@ -4,4 +4,5 @@
 payload:
   - DOMAIN-REGEX,^dl-[A-Za-z0-9-]+\.mypikpak\.com$
   - DOMAIN-KEYWORD,207769
+  - DOMAIN-KEYWORD,20776969
   - DOMAIN-KEYWORD,m-team
