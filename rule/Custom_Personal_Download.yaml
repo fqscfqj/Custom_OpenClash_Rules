@@ -11,3 +11,5 @@ payload:
   # 4Chan
   - DOMAIN-KEYWORD,4cdn
   - DOMAIN-KEYWORD,4chan
+  # GITHUB下载镜像
+  - DOMAIN-SUFFIX,ghcr.io
