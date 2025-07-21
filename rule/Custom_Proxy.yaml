@@ -12,3 +12,6 @@ payload:
   - DOMAIN-SUFFIX,mtalk.google.com
 # PS5 STUN
   - DOMAIN-SUFFIX,stun.playstation.net
+# 南加
+  - DOMAIN-SUFFIX,summer-plus.net
+  - DOMAIN-SUFFIX,south-plus.net
