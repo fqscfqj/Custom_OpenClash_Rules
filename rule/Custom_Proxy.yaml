@@ -1,0 +1,14 @@
+payload:
+
+# OpenClash 首页 IP 地址探测
+  - DOMAIN-SUFFIX,ip.sb
+  - DOMAIN-SUFFIX,ipify.org
+# GooglePlay 相关
+  - DOMAIN-SUFFIX,services.googleapis.cn
+  - DOMAIN-SUFFIX,clientservices.googleapis.com
+  - DOMAIN-SUFFIX,googleapis.cn
+  - DOMAIN-SUFFIX,xn--ngstr-lra8j.com
+# Google 相关
+  - DOMAIN-SUFFIX,mtalk.google.com
+# PS5 STUN
+  - DOMAIN-SUFFIX,stun.playstation.net
