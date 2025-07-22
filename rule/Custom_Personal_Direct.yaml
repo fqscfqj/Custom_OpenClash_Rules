@@ -68,8 +68,10 @@ payload:
   - DOMAIN-SUFFIX,game.maj-soul.com
 # 个人用
   - DOMAIN-REGEX,^dl-[A-Za-z0-9-]+\.mypikpak\.com$
-  - DOMAIN-SUFFIX,*.207769.xyz
+  - DOMAIN-SUFFIX,207769.xyz
+  - DOMAIN-SUFFIX,52fq.uk
   - DOMAIN-KEYWORD,m-team
+  
 
   - GEOSITE,apple
   - GEOSITE,category-speedtest
