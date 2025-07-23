@@ -10,10 +10,9 @@ payload:
   - DOMAIN-SUFFIX,xn--ngstr-lra8j.com
 # Google 相关
   - DOMAIN-SUFFIX,mtalk.google.com
-# PS5 STUN
-  - DOMAIN-SUFFIX,stun.playstation.net
 # 南加
   - DOMAIN-SUFFIX,summer-plus.net
   - DOMAIN-SUFFIX,south-plus.net
 # 网盘
   - GEOSITE,mega
+  - GEOSITE,pikpak
