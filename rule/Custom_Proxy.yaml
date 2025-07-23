@@ -15,3 +15,5 @@ payload:
 # 南加
   - DOMAIN-SUFFIX,summer-plus.net
   - DOMAIN-SUFFIX,south-plus.net
+# 网盘
+  - GEOSITE,mega
