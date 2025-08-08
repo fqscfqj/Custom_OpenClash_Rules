@@ -18,14 +18,15 @@ payload:
 # 懒得写了
   - GEOSITE,4chan
   - GEOSITE,category-communication
-  - GEOSITE,category-social-media-!cn
+  - GEOSITE,category-social-media
   - GEOSITE,category-entertainment
-  - GEOSITE,cursor
+  - DOMAIN-SUFFIX,cursor.com
+  - DOMAIN-SUFFIX,cursor.sh
   - GEOSITE,huggingface
   - GEOSITE,docker
   - GEOSITE,github
   - GEOSITE,googlefcm
   - GEOSITE,google
-  - GEOSITE,category-games-!cn
+  - GEOSITE,category-games
   - GEOSITE,category-ecommerce
   - GEOSITE,category-porn
