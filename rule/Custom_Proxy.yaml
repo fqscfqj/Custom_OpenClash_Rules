@@ -30,3 +30,5 @@ payload:
   - GEOSITE,category-games
   - GEOSITE,category-ecommerce
   - GEOSITE,category-porn
+  - GEOSITE,netflix
+  - GEOSITE,spotify
