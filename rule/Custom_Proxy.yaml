@@ -10,8 +10,22 @@ payload:
   - DOMAIN-SUFFIX,xn--ngstr-lra8j.com
 # Google 相关
   - DOMAIN-SUFFIX,mtalk.google.com
+# 网盘
+  - GEOSITE,mega
 # 南加
   - DOMAIN-SUFFIX,summer-plus.net
   - DOMAIN-SUFFIX,south-plus.net
-# 网盘
-  - GEOSITE,mega
+# 懒得写了
+  - GEOSITE,4chan
+  - GEOSITE,category-communication
+  - GEOSITE,category-social-media-!cn
+  - GEOSITE,category-entertainment
+  - GEOSITE,cursor
+  - GEOSITE,huggingface
+  - GEOSITE,docker
+  - GEOSITE,github
+  - GEOSITE,googlefcm
+  - GEOSITE,google
+  - GEOSITE,category-games-!cn
+  - GEOSITE,category-ecommerce
+  - GEOSITE,category-porn
