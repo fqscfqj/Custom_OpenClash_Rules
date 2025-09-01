@@ -11,24 +11,18 @@ payload:
 
 # 网盘
   - GEOSITE,mega
-# 南加
+
   - DOMAIN-SUFFIX,summer-plus.net
   - DOMAIN-SUFFIX,south-plus.net
-# 懒得写了
-# Google 相关
   - DOMAIN-SUFFIX,mtalk.google.com
   - GEOSITE,4chan
   - GEOSITE,category-communication
   - GEOSITE,category-social-media
   - GEOSITE,category-entertainment
-  - DOMAIN-SUFFIX,cursor.com
-  - DOMAIN-SUFFIX,cursor.sh
-  - GEOSITE,huggingface
+  - GEOSITE,category-social-media-!cn
   - GEOSITE,docker
   - GEOSITE,googlefcm
   - GEOSITE,google
   - GEOSITE,category-games
   - GEOSITE,category-ecommerce
   - GEOSITE,category-porn
-  - GEOSITE,netflix
-  - GEOSITE,spotify
