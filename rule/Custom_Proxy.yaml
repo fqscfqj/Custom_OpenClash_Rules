@@ -9,8 +9,6 @@ payload:
   - DOMAIN-SUFFIX,googleapis.cn
   - DOMAIN-SUFFIX,xn--ngstr-lra8j.com
 
-# 网盘
-  - GEOSITE,mega
 
   - DOMAIN-SUFFIX,summer-plus.net
   - DOMAIN-SUFFIX,south-plus.net
