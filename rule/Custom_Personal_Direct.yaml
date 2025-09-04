@@ -70,6 +70,7 @@ payload:
   - DOMAIN-SUFFIX,rustdesk.com
 # 个人用
   - DOMAIN-REGEX,^dl-[A-Za-z0-9-]+\.mypikpak\.com$
+  - DOMAIN-REGEX,^dl-[A-Za-z0-9-]+\.mypikpak\.net$
   - DOMAIN-SUFFIX,207769.xyz
   - DOMAIN-SUFFIX,52fq.uk
   - DOMAIN-KEYWORD,m-team
