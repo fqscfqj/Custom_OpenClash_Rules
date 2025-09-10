@@ -1,7 +1,4 @@
 payload:
-# ImmortalWrt 相关
-  - DOMAIN-SUFFIX,immortalwrt.org
-  - DOMAIN-SUFFIX,kyarucloud.moe
 # GitHub 反代 CDN
   - DOMAIN-SUFFIX,gh-proxy.com
   - DOMAIN-SUFFIX,gh.con.sh
@@ -72,6 +69,7 @@ payload:
   - DOMAIN-REGEX,^dl-[A-Za-z0-9-]+\.mypikpak\.(com|net)$
   - DOMAIN-SUFFIX,207769.xyz
   - DOMAIN-SUFFIX,52fq.uk
+  - IP-CIDR,178.157.50.237/32
   - DOMAIN-KEYWORD,m-team
   - DOMAIN-SUFFIX,cas-bridge.xethub.hf.co
 
