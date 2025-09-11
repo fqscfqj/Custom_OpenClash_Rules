@@ -69,7 +69,8 @@ payload:
   - DOMAIN-REGEX,^dl-[A-Za-z0-9-]+\.mypikpak\.(com|net)$
   - DOMAIN-SUFFIX,207769.xyz
   - DOMAIN-SUFFIX,52fq.uk
-  - IP-CIDR,178.157.50.237/32
+  - IP-CIDR,178.157.50.237/32,no-resolve
+  - IP-CIDR,2607:8700:5500:e523::2/128,no-resolve
   - DOMAIN-KEYWORD,m-team
   - DOMAIN-SUFFIX,cas-bridge.xethub.hf.co
 
