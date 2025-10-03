@@ -8,19 +8,21 @@ payload:
   - DOMAIN-SUFFIX,clientservices.googleapis.com
   - DOMAIN-SUFFIX,googleapis.cn
   - DOMAIN-SUFFIX,xn--ngstr-lra8j.com
-
-
+  - GEOSITE,googlefcm
+  - GEOSITE,google
   - DOMAIN-SUFFIX,summer-plus.net
   - DOMAIN-SUFFIX,south-plus.net
   - DOMAIN-SUFFIX,mtalk.google.com
   - GEOSITE,4chan
-  - GEOSITE,category-communication
-  - GEOSITE,category-social-media
-  - GEOSITE,category-entertainment
-  - GEOSITE,category-social-media-!cn
   - GEOSITE,docker
-  - GEOSITE,googlefcm
-  - GEOSITE,google
-  - GEOSITE,category-games
-  - GEOSITE,category-ecommerce
   - GEOSITE,github
+  # 社交app
+  - GEOSITE,category-communication
+  # 娱乐类网站
+  - GEOSITE,category-entertainment
+  # 社交媒体
+  - GEOSITE,category-social-media-!cn
+# 游戏类网站
+  - GEOSITE,category-games-!cn
+# 购物类网站
+  - GEOSITE,category-ecommerce

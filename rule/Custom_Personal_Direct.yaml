@@ -38,7 +38,6 @@ payload:
   - DOMAIN-SUFFIX,ifconfig.co
   - DOMAIN-SUFFIX,api.myip.com
   - DOMAIN-SUFFIX,giveup.top
-# DOMAIN-SUFFIX,ip-api.com 会影响某些 DNS 泄露检测网站的结果，暂时屏蔽
   - DOMAIN-SUFFIX,ipapi.co
   - DOMAIN-SUFFIX,ip6.seeip.org
   - DOMAIN-SUFFIX,kit327.com
@@ -57,12 +56,8 @@ payload:
   - DOMAIN-SUFFIX,powershellgallery.com
 # NTP Pool Project
   - DOMAIN-SUFFIX,pool.ntp.org
-# Dell
-  - DOMAIN-SUFFIX,dell.com
 # MicroSoft Rewards
   - DOMAIN-SUFFIX,rewards.bing.com
-# 雀魂麻将
-  - DOMAIN-SUFFIX,game.maj-soul.com
 # RustDesk
   - DOMAIN-SUFFIX,rustdesk.com
 # 个人用
