@@ -10,3 +10,4 @@ payload:
   - GEOSITE,mega
   - DOMAIN-SUFFIX,xethub.hf.co
   - DOMAIN-SUFFIX,quay.io
+  - DOMAIN-SUFFIX,production.cloudflare.docker.com
