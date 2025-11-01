@@ -11,3 +11,4 @@ payload:
   - DOMAIN-SUFFIX,xethub.hf.co
   - DOMAIN-SUFFIX,quay.io
   - DOMAIN-SUFFIX,production.cloudflare.docker.com
+  - DOMAIN-SUFFIX,kg-containers.githubusercontent.com
