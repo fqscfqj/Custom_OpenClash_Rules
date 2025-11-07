@@ -26,3 +26,4 @@ payload:
   - GEOSITE,category-games-!cn
 # 购物类网站
   - GEOSITE,category-ecommerce
+  - GEOSITE,linuxdo
