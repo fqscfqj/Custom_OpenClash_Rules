@@ -14,7 +14,6 @@ payload:
   - DOMAIN-SUFFIX,south-plus.net
   - DOMAIN-SUFFIX,mtalk.google.com
   - GEOSITE,4chan
-  - GEOSITE,docker
   - GEOSITE,github
   # 社交app
   - GEOSITE,category-communication
