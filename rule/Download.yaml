@@ -13,3 +13,4 @@ payload:
   - DOMAIN-SUFFIX,quay.io
   - DOMAIN-SUFFIX,production.cloudflare.docker.com
   - DOMAIN-SUFFIX,kg-containers.githubusercontent.com
+  - DOMAIN-SUFFIX,pkg-containers.githubusercontent.com
