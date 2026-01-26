@@ -18,4 +18,4 @@ payload:
   - DOMAIN-SUFFIX,kg-containers.githubusercontent.com
   - DOMAIN-SUFFIX,pkg-containers.githubusercontent.com
   - DOMAIN-SUFFIX,cf-files.nexusmods.com
-  
+  - DOMAIN-SUFFIX,mediafire.com
