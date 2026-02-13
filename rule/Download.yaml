@@ -20,3 +20,4 @@ payload:
   - DOMAIN-SUFFIX,cf-files.nexusmods.com
   - DOMAIN-SUFFIX,nexus-cdn.com
   - DOMAIN-SUFFIX,mediafire.com
+  - DOMAIN-SUFFIX,pan.muxin.me
