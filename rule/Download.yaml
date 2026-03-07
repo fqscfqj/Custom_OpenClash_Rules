@@ -6,17 +6,12 @@ payload:
   - DOMAIN-SUFFIX,bunkr.is
   - DOMAIN-SUFFIX,bunkr.su
   - DOMAIN-SUFFIX,civitai.com
-  - DOMAIN-SUFFIX,raw.githubusercontent.com
-  - DOMAIN-SUFFIX,user-images.githubusercontent.com
-  - DOMAIN-SUFFIX,camo.githubusercontent.com
-  - DOMAIN-SUFFIX,cloud.githubusercontent.com
+  - DOMAIN-SUFFIX,githubusercontent.com
   - GEOSITE,mega
   - GEOSITE,docker
   - DOMAIN-SUFFIX,xethub.hf.co
   - DOMAIN-SUFFIX,quay.io
   - DOMAIN-SUFFIX,production.cloudflare.docker.com
-  - DOMAIN-SUFFIX,kg-containers.githubusercontent.com
-  - DOMAIN-SUFFIX,pkg-containers.githubusercontent.com
   - DOMAIN-SUFFIX,cf-files.nexusmods.com
   - DOMAIN-SUFFIX,nexus-cdn.com
   - DOMAIN-SUFFIX,mediafire.com
