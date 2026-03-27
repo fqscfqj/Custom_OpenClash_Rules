@@ -1,14 +1,15 @@
 # 个人下载代理规则库
 
 payload:
+  - GEOSITE,mega
+  - GEOSITE,docker
   - DOMAIN-SUFFIX,gofile.io
   - DOMAIN-SUFFIX,bunkr.ru
   - DOMAIN-SUFFIX,bunkr.is
   - DOMAIN-SUFFIX,bunkr.su
   - DOMAIN-SUFFIX,civitai.com
   - DOMAIN-SUFFIX,githubusercontent.com
-  - GEOSITE,mega
-  - GEOSITE,docker
+  - DOMAIN-SUFFIX,alive.github.com
   - DOMAIN-SUFFIX,xethub.hf.co
   - DOMAIN-SUFFIX,quay.io
   - DOMAIN-SUFFIX,production.cloudflare.docker.com
