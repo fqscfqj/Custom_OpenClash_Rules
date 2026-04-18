@@ -1,8 +1,13 @@
-# 80/443 之外的端口规则
+# 80/443 之外的端口规则，排除 DNS/DoT/DoQ 常见端口
 # REPO: https://github.com/Aethersailor/Custom_OpenClash_Rules
-# TOTAL: 3
+# TOTAL: 8
 
 payload:
-  - DST-PORT,1-79
+  - DST-PORT,1-52
+  - DST-PORT,54-79
   - DST-PORT,81-442
-  - DST-PORT,444-65535
+  - DST-PORT,444-783
+  - DST-PORT,785-852
+  - DST-PORT,854-5352
+  - DST-PORT,5354-8852
+  - DST-PORT,8854-65535
