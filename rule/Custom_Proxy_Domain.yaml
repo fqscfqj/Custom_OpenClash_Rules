@@ -1,7 +1,7 @@
 # Generated from rule/Custom_Proxy.list
 # REPO: https://github.com/Aethersailor/Custom_OpenClash_Rules
 # SOURCE: https://github.com/Aethersailor/Custom_OpenClash_Rules/blob/main/rule/Custom_Proxy.list
-# TOTAL: 16
+# TOTAL: 30
 
 payload:
   - DOMAIN-SUFFIX,7pzzv.us
@@ -22,3 +22,15 @@ payload:
   - DOMAIN-SUFFIX,xn--ngstr-lra8j.com
   - DOMAIN-SUFFIX,afdian.com
   - DOMAIN-SUFFIX,amd.com
+  - DOMAIN-SUFFIX,adguard-dns.com
+  - DOMAIN-SUFFIX,cleanbrowsing.org
+  - DOMAIN-SUFFIX,cloudflare-dns.com
+  - DOMAIN-SUFFIX,controld.com
+  - DOMAIN-SUFFIX,dns.google
+  - DOMAIN-SUFFIX,dns.sb
+  - DOMAIN-SUFFIX,doh.sb
+  - DOMAIN-SUFFIX,libredns.gr
+  - DOMAIN-SUFFIX,mullvad.net
+  - DOMAIN-SUFFIX,nextdns.io
+  - DOMAIN-SUFFIX,opendns.com
+  - DOMAIN-SUFFIX,quad9.net

@@ -1,0 +1,64 @@
+mixed-port: 7890
+allow-lan: true
+mode: rule
+log-level: info
+external-controller: 0.0.0.0:9090
+
+dns:
+  enable: true
+  listen: 0.0.0.0:7874
+  ipv6: false
+  use-hosts: true
+  use-system-hosts: false
+  respect-rules: true
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  fake-ip-filter-mode: blacklist
+  fake-ip-filter:
+    - "*.lan"
+    - "*.local"
+    - "*.localdomain"
+    - "*.localhost"
+    - "*.home.arpa"
+    - "localhost.ptlogin2.qq.com"
+    - "+.msftconnecttest.com"
+    - "+.msftncsi.com"
+    - "time.*.com"
+    - "time.*.gov"
+    - "time.*.edu.cn"
+    - "time.*.apple.com"
+    - "+.pool.ntp.org"
+    - "time1.cloud.tencent.com"
+  default-nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+  proxy-server-nameserver:
+    - https://dns.alidns.com/dns-query
+    - https://doh.pub/dns-query
+  direct-nameserver:
+    - https://dns.alidns.com/dns-query
+    - https://doh.pub/dns-query
+  nameserver:
+    - "https://1.1.1.1/dns-query#🚀 手动选择"
+    - "https://1.0.0.1/dns-query#🚀 手动选择"
+    - "https://8.8.8.8/dns-query#🚀 手动选择"
+  nameserver-policy:
+    "geosite:cn,private":
+      - https://dns.alidns.com/dns-query
+      - https://doh.pub/dns-query
+  fallback:
+    - "https://1.1.1.1/dns-query#🚀 手动选择"
+    - "https://1.0.0.1/dns-query#🚀 手动选择"
+    - "https://8.8.4.4/dns-query#🚀 手动选择"
+  fallback-filter:
+    geoip: true
+    geoip-code: CN
+    geosite:
+      - gfw
+    ipcidr:
+      - 240.0.0.0/4
+      - 0.0.0.0/32
+
+proxies:
+proxy-groups:
+rules:
