@@ -59,6 +59,6 @@ dns:
       - 240.0.0.0/4
       - 0.0.0.0/32
 
-proxies:
-proxy-groups:
-rules:
+proxies: []
+proxy-groups: []
+rules: []
