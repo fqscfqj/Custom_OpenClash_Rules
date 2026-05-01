@@ -12,3 +12,11 @@
 - 如必须启用“自定义上游 DNS 服务器”，需在下方“设置自定义上游 DNS 服务器”中至少添加一条 `NameServer` 组服务器，否则 OpenClash 会提示 `配置文件 DNS 选项下的 Nameserver 必须设置服务器`。
 - 端口直连规则已排除 53/784/853/5353/8853，避免 DNS/DoT/DoQ 被直连放行。
 - 浏览器或系统如果启用了“安全 DNS”，请关闭，或确保对应 DoH 域名/IP 会命中代理规则。
+
+## IPv6 兼容模式
+
+- 当前 `cfg/Custom_Clash_Base.yaml` 默认启用顶层 `ipv6: true`、`dns.ipv6: true` 和 `fake-ip-range6`，用于保留国内原生 IPv6，同时让 OpenClash 统一处理 AAAA 解析。
+- OpenClash 覆写建议同时开启 `IPv6`、`IPv6 DNS`、`China IPv6 Route` 与 `respect-rules`；DNS 劫持继续使用“防火墙转发”，并关闭“追加上游 DNS”“追加默认 DNS”。
+- OpenWrt / ImmortalWrt 的 LAN 口建议优先设置为：`RA 服务 = 服务器模式`、`DHCPv6 服务 = 关闭`、`NDP 代理 = 关闭`、`本地 IPv6 DNS 服务器 = 勾选`。如果个别客户端拿不到 IPv6，再把 `DHCPv6 服务` 调整为“服务器模式”，不要直接上“混合模式”。
+- 该模式的目标是“国内 IPv6 直连 + OpenClash 双栈分流”，因此建议配合 OpenClash 的 `China IPv6 Route` 使用；否则国外 AAAA 目标也可能被直接放行，体验会比较放飞自我。
+- 如果你的 WAN 没有稳定 IPv6，或更在意省心而不是双栈，可以把 `cfg/Custom_Clash_Base.yaml` 里的顶层 `ipv6` 与 `dns.ipv6` 改回 `false`，并在 OpenClash 覆写里同时关闭 IPv6 相关选项。
