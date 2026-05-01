@@ -29,9 +29,11 @@ dns:
     - "time.*.apple.com"
     - "+.pool.ntp.org"
     - "time1.cloud.tencent.com"
+  # 仅用于引导解析 DoH 域名，本身不是最终上游；若极度在意隐私暴露，可改为自建/更信任的引导 DNS。
   default-nameserver:
     - 223.5.5.5
     - 119.29.29.29
+  # 代理节点域名必须能在直连状态下解析，否则会出现解析代理节点时的回环问题。
   proxy-server-nameserver:
     - https://dns.alidns.com/dns-query
     - https://doh.pub/dns-query
