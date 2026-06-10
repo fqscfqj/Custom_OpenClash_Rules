@@ -16,6 +16,16 @@ payload:
   - DOMAIN-SUFFIX,cf-files.nexusmods.com
   - DOMAIN-SUFFIX,nexus-cdn.com
   - DOMAIN-SUFFIX,mediafire.com
+  - DOMAIN-SUFFIX,mega.co.nz
+  - DOMAIN-SUFFIX,mega.nz
+  - DOMAIN-SUFFIX,drive.google.com
+  - DOMAIN-SUFFIX,docs.google.com
+  - DOMAIN-SUFFIX,dropbox.com
+  - DOMAIN-SUFFIX,dropboxstatic.com
+  - DOMAIN-SUFFIX,onedrive.live.com
+  - DOMAIN-SUFFIX,sharepoint.com
+  - DOMAIN-SUFFIX,1drv.ms
+  - DOMAIN-SUFFIX,box.com
   - DOMAIN-SUFFIX,pan.muxin.me
   - DOMAIN-SUFFIX,download.pytorch.org
   - DOMAIN-SUFFIX,files.pythonhosted.org

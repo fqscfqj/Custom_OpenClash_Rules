@@ -1,4 +1,0 @@
-payload:
-  - DOMAIN-REGEX,^dl-[A-Za-z0-9-]+\.mypikpak\.(com|net)$
-  - DOMAIN-SUFFIX,dav.mypikpak.net
-  - DOMAIN-SUFFIX,dl.pikpak.io
