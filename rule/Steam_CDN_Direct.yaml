@@ -1,0 +1,10 @@
+# Steam download CDN direct rules
+# REPO: https://github.com/fqscfqj/Custom_OpenClash_Rules
+
+payload:
+  - DOMAIN-SUFFIX,steamcontent.com
+  - DOMAIN-SUFFIX,steamcdn-a.akamaihd.net
+  - DOMAIN-SUFFIX,steamserver.net
+  - DOMAIN-SUFFIX,steamuserimages-a.akamaihd.net
+  - DOMAIN-SUFFIX,steamvideo-a.akamaihd.net
+  - DOMAIN-SUFFIX,akamaized.net

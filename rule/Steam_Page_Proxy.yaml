@@ -1,0 +1,8 @@
+# Steam page/community proxy rules
+# REPO: https://github.com/fqscfqj/Custom_OpenClash_Rules
+
+payload:
+  - DOMAIN-SUFFIX,steampowered.com
+  - DOMAIN-SUFFIX,steamcommunity.com
+  - DOMAIN-SUFFIX,steamstatic.com
+  - DOMAIN-SUFFIX,cm.steampowered.com
