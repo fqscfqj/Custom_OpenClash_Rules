@@ -1,49 +1,14 @@
+# ============================================================
+# Custom_Clash_Base — DNS 防泄漏核心
+# 性能参数由 OpenClash UCI + custom_overwrite.sh 控制
+# 备份还原时 UCI + /etc/openclash/custom/ 下的覆写文件会一并保留
+# ============================================================
 mixed-port: 7890
 allow-lan: true
 mode: rule
 log-level: info
 external-controller: 0.0.0.0:9090
-# 保留国内 IPv6 时，需要在 OpenClash 覆写里同步开启 IPv6 / IPv6 DNS / China IPv6 Route。
 ipv6: true
-
-# === 性能优化 ===
-# TCP 并发：同一域名多条连接并行建立，加速页面加载
-tcp-concurrent: true
-# 统一延迟：将节点延迟检测合并为一次，减少不必要的健康检查
-unified-delay: true
-# 保持连接空闲超时（秒），减少 TLS 握手次数
-keep-alive-idle: 600
-# 客户端指纹伪装为 Chrome，避免被 CDN 识别为异常流量而限速/拦截
-global-client-fingerprint: chrome
-# 使用 mihomo 内置 geo 数据，更新更快
-geodata-mode: true
-geodata-loader: memconservative
-
-# === 持久化 ===
-profile:
-  store-selected: true
-  store-fake-ip: true
-
-# === SNI 嗅探 ===
-# 关键：对 TLS 流量进行 SNI 嗅探，识别图片 CDN 等未命中规则的域名真实目标
-# 解决"首次访问图片加载不出"的核心修复
-sniffer:
-  enable: true
-  sniffing:
-    - tls
-    - http
-  port-whitelist:
-    - 80
-    - 443
-    - 8080
-    - 8443
-  sniff:
-    TLS:
-      ports: [443, 8443]
-    HTTP:
-      ports: [80, 8080-8880]
-  force-dns-mapping: true
-  parse-pure-ip: true
 
 dns:
   enable: true
@@ -71,11 +36,9 @@ dns:
     - "time.*.apple.com"
     - "+.pool.ntp.org"
     - "time1.cloud.tencent.com"
-  # 仅用于引导解析 DoH 域名，本身不是最终上游；若极度在意隐私暴露，可改为自建/更信任的引导 DNS。
   default-nameserver:
     - 223.5.5.5
     - 119.29.29.29
-  # 代理节点域名必须能在直连状态下解析，否则会出现解析代理节点时的回环问题。
   proxy-server-nameserver:
     - https://dns.alidns.com/dns-query
     - https://doh.pub/dns-query
