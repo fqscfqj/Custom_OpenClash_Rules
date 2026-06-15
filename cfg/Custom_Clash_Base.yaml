@@ -1,6 +1,7 @@
 # ============================================================
 # Custom_Clash_Base — OpenClash 基础模板
-# 所有参数均通过 OpenClash Web 界面或 GitHub 模板原生管理
+# 所有参数均通过 OpenClash Web 界面(UCI) + 此模板原生管理
+# 不再需要 custom_overwrite.sh
 # ============================================================
 mixed-port: 7890
 allow-lan: true
@@ -9,15 +10,15 @@ log-level: info
 external-controller: 0.0.0.0:9090
 ipv6: true
 
-# --- 性能优化（以下参数 OpenClash Web 界面无对应项，在此预设）---
+# 以下参数在 OpenClash Web 界面无对应项，在此预设
 keep-alive-idle: 600
 geodata-mode: true
+global-client-fingerprint: chrome
 
 profile:
   store-selected: true
   store-fake-ip: true
 
-# --- DNS 防泄漏核心 ---
 dns:
   enable: true
   listen: 0.0.0.0:7874
