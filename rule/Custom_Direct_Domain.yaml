@@ -477,3 +477,5 @@ payload:
   - DOMAIN-KEYWORD,207769.xyz
   - DOMAIN-KEYWORD,52fq.uk
   - DOMAIN-SUFFIX,xychatai.com
+  - DOMAIN-SUFFIX,fonts.gstatic.com
+  - DOMAIN-SUFFIX,fonts.googleapis.com
