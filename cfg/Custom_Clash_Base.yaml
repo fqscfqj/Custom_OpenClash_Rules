@@ -55,6 +55,8 @@ dns:
     - "*.blizzard.net"
     - "+.ts.net"
     - "*.tailscale.com"
+    - "www.gstatic.com"
+    - "fonts.gstatic.com"
     - "+.ddns.net"
     - "+.noip.com"
     - "+.ip6-localhost"
