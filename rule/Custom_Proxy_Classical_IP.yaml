@@ -1,9 +1,11 @@
 # Generated from rule/Custom_Proxy.list
 # REPO: https://github.com/Aethersailor/Custom_OpenClash_Rules
 # SOURCE: https://github.com/Aethersailor/Custom_OpenClash_Rules/blob/main/rule/Custom_Proxy.list
-# TOTAL: 12
+# TOTAL: 18
+# PURPOSE: 公共 DNS 服务器 IP,确保系统直连这些 IP 的 DoT/DoH 流量走代理避免污染
 
 payload:
+  # IPv4 公共 DNS
   - IP-CIDR,1.0.0.1/32,no-resolve
   - IP-CIDR,1.1.1.1/32,no-resolve
   - IP-CIDR,8.8.4.4/32,no-resolve
@@ -16,3 +18,10 @@ payload:
   - IP-CIDR,185.222.222.222/32,no-resolve
   - IP-CIDR,208.67.220.220/32,no-resolve
   - IP-CIDR,208.67.222.222/32,no-resolve
+  # IPv6 公共 DNS(弥补原配置缺失 IPv6 DNS 代理)
+  - IP-CIDR6,2606:4700:4700::1111/128,no-resolve
+  - IP-CIDR6,2606:4700:4700::1001/128,no-resolve
+  - IP-CIDR6,2001:4860:4860::8888/128,no-resolve
+  - IP-CIDR6,2001:4860:4860::8844/128,no-resolve
+  - IP-CIDR6,2620:fe::fe/128,no-resolve
+  - IP-CIDR6,2620:fe::9/128,no-resolve

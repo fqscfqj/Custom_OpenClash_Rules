@@ -479,3 +479,23 @@ payload:
   - DOMAIN-SUFFIX,xychatai.com
   - DOMAIN-SUFFIX,fonts.gstatic.com
   - DOMAIN-SUFFIX,fonts.googleapis.com
+  # Google 中国备案域名(可直接访问,走代理反而绕路)
+  - DOMAIN-SUFFIX,googleapis.cn
+  - DOMAIN-SUFFIX,services.googleapis.cn
+  # 中国本土平台(原误配在 Proxy_Domain)
+  - DOMAIN-SUFFIX,afdian.com
+  # 企业办公/会议
+  - DOMAIN-SUFFIX,dingtalk.com
+  - DOMAIN-SUFFIX,feishu.cn
+  - DOMAIN-SUFFIX,meeting.tencent.com
+  # 支付/网盘
+  - DOMAIN-SUFFIX,alipay.com
+  - DOMAIN-SUFFIX,alipan.com
+  - DOMAIN-SUFFIX,aliyundrive.com
+  - DOMAIN-SUFFIX,pan.quark.cn
+  # 开发者镜像源
+  - DOMAIN-SUFFIX,registry.npmmirror.com
+  - DOMAIN-SUFFIX,pypi.tuna.tsinghua.edu.cn
+  # 米哈游国服(海外版 hoyoverse.com 走代理)
+  - DOMAIN-SUFFIX,mihoyo.com
+  - DOMAIN-SUFFIX,bbs.mihoyo.com

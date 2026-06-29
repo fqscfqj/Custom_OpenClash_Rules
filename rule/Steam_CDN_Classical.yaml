@@ -3,6 +3,11 @@
 # IP-CIDR rules removed (CDN IPs change frequently)
 # REPO: https://github.com/fqscfqj/Custom_OpenClash_Rules
 # TOTAL: 10
+# ⚠️ 废弃/备用文件:Custom_Clash.ini 未引用此文件
+#    若启用会与 Steam_Page_Proxy.yaml 冲突(steampowered.com/steamcommunity.com/
+#    steamstatic.com/cm.steampowered.com 在两文件中策略相反:本文件直连,Page_Proxy 代理)
+#    当前生效逻辑:Steam 页面/社区走代理(Steam_Page_Proxy),Steam CDN 下载直连(Steam_CDN_Direct)
+#    请勿在 ini 中添加此文件的 ruleset 引用,除非明确需要全量直连 Steam
 
 payload:
   # Steam main site & community

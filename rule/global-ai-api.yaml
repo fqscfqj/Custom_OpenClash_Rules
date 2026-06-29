@@ -1,1 +1,29 @@
+# Generated from rule/global-ai-api.list
+# REPO: https://github.com/Aethersailor/Custom_OpenClash_Rules
+# PURPOSE: 补充 GEOSITE,category-ai-!cn 可能遗漏的境外 AI 服务域名
+# NOTE: 中国 AI 服务(deepseek/zhipu/yiyan 等)不收录,依赖 GEOSITE,cn 兜底直连
+# TOTAL: 21
+
 payload:
+  - DOMAIN-SUFFIX,openai.com
+  - DOMAIN-SUFFIX,chatgpt.com
+  - DOMAIN-SUFFIX,oaistatic.com
+  - DOMAIN-SUFFIX,oaiusercontent.com
+  - DOMAIN-SUFFIX,anthropic.com
+  - DOMAIN-SUFFIX,claude.ai
+  - DOMAIN-SUFFIX,perplexity.ai
+  - DOMAIN-SUFFIX,pplx.ai
+  - DOMAIN-SUFFIX,groq.com
+  - DOMAIN-SUFFIX,mistral.ai
+  - DOMAIN-SUFFIX,cohere.com
+  - DOMAIN-SUFFIX,cohere.ai
+  - DOMAIN-SUFFIX,replicate.com
+  - DOMAIN-SUFFIX,replicate.delivery
+  - DOMAIN-SUFFIX,x.ai
+  - DOMAIN-SUFFIX,grok.com
+  - DOMAIN-SUFFIX,together.ai
+  - DOMAIN-SUFFIX,together.xyz
+  - DOMAIN-SUFFIX,midjourney.com
+  - DOMAIN-SUFFIX,poe.com
+  - DOMAIN-SUFFIX,huggingface.co
+  - DOMAIN-SUFFIX,hf.co

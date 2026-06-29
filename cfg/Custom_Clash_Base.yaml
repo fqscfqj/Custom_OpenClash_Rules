@@ -14,6 +14,9 @@ ipv6: true
 keep-alive-idle: 600
 geodata-mode: true
 global-client-fingerprint: chrome
+tcp-concurrent: true
+find-process-mode: strict
+unified-delay: true
 
 profile:
   store-selected: true
@@ -45,6 +48,19 @@ dns:
     - "time.*.apple.com"
     - "+.pool.ntp.org"
     - "time1.cloud.tencent.com"
+    - "+.market.xiaomi.com"
+    - "+.mi.com"
+    - "+.srv.nintendo.net"
+    - "+.battle.net"
+    - "*.blizzard.net"
+    - "+.ts.net"
+    - "*.tailscale.com"
+    - "+.ddns.net"
+    - "+.noip.com"
+    - "+.ip6-localhost"
+    - "+.ip6-loopback"
+    - "*.ip6-localnet"
+    - "+.ip6-mcastprefix"
   default-nameserver:
     - 223.5.5.5
     - 119.29.29.29
@@ -65,7 +81,19 @@ dns:
     "geosite:cn":
       - https://dns.alidns.com/dns-query
       - https://doh.pub/dns-query
+    "geosite:microsoft":
+      - https://dns.alidns.com/dns-query
+      - https://doh.pub/dns-query
+    "geosite:apple":
+      - https://dns.alidns.com/dns-query
+      - https://doh.pub/dns-query
     "geosite:google":
+      - https://1.1.1.1/dns-query
+      - https://1.0.0.1/dns-query
+    "geosite:github":
+      - https://1.1.1.1/dns-query
+      - https://1.0.0.1/dns-query
+    "geosite:category-ai-!cn":
       - https://1.1.1.1/dns-query
       - https://1.0.0.1/dns-query
     "geosite:gfw":
@@ -78,13 +106,33 @@ dns:
     geoip: true
     geoip-code: CN
     geosite:
-      - gfw
+      - geolocation-cn
     ipcidr:
-      - ::/128
-      - ::1/128
-      - 2001::/32
-      - 240.0.0.0/4
       - 0.0.0.0/32
+      - 240.0.0.0/4
+      - ::/128
+
+# 嗅探器:fake-ip 模式下还原 TLS SNI / HTTP Host,使基于域名的代理规则正常生效
+sniffer:
+  enable: true
+  force-dns-mapping: true
+  parse-pure-ip: true
+  sniff:
+    TLS:
+      ports:
+        - 443
+        - 8443
+    HTTP:
+      ports:
+        - 80
+        - 8080-8880
+      override-destination: true
+  skip-domain:
+    - "*.lan"
+    - "*.local"
+    - "*.localdomain"
+    - "*.msftconnecttest.com"
+    - "*.msftncsi.com"
 
 proxies: []
 proxy-groups: []

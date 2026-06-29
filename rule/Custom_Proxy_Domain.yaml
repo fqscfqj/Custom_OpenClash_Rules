@@ -1,33 +1,28 @@
 # Generated from rule/Custom_Proxy.list
 # REPO: https://github.com/Aethersailor/Custom_OpenClash_Rules
 # SOURCE: https://github.com/Aethersailor/Custom_OpenClash_Rules/blob/main/rule/Custom_Proxy.list
-# TOTAL: 31
+# TOTAL: 23
+# NOTE: 已移除被 GEOSITE,google 覆盖的冗余项(gstatic.com/clientservices.googleapis.com/mtalk.google.com/dns.google)
+#       已移除被 GEOSITE,microsoft 覆盖的冗余项(onedrive.live.com)
+#       googleapis.cn/services.googleapis.cn/afdian.com 中国可达,已转 Custom_Direct_Domain
 
 payload:
   - DOMAIN-SUFFIX,7pzzv.us
   - DOMAIN-SUFFIX,arduino.cc
-  - DOMAIN-SUFFIX,clientservices.googleapis.com
   - DOMAIN-SUFFIX,cloudsync-prod.s3.us-east-1.amazonaws.com
   - DOMAIN-SUFFIX,dmhy.org
-  - DOMAIN-SUFFIX,googleapis.cn
-  - DOMAIN-SUFFIX,gstatic.com
   - DOMAIN-SUFFIX,hoyolab.com
   - DOMAIN-SUFFIX,hoyoverse.com
   - DOMAIN-SUFFIX,ip.sb
   - DOMAIN-SUFFIX,ipify.org
-  - DOMAIN-SUFFIX,mtalk.google.com
-  - DOMAIN-SUFFIX,onedrive.live.com
   - DOMAIN-SUFFIX,platformio.org
-  - DOMAIN-SUFFIX,services.googleapis.cn
   - DOMAIN-SUFFIX,stun.playstation.net
   - DOMAIN-SUFFIX,xn--ngstr-lra8j.com
-  - DOMAIN-SUFFIX,afdian.com
   - DOMAIN-SUFFIX,amd.com
   - DOMAIN-SUFFIX,adguard-dns.com
   - DOMAIN-SUFFIX,cleanbrowsing.org
   - DOMAIN-SUFFIX,cloudflare-dns.com
   - DOMAIN-SUFFIX,controld.com
-  - DOMAIN-SUFFIX,dns.google
   - DOMAIN-SUFFIX,dns.sb
   - DOMAIN-SUFFIX,doh.sb
   - DOMAIN-SUFFIX,libredns.gr
