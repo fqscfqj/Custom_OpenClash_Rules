@@ -479,9 +479,6 @@ payload:
   - DOMAIN-SUFFIX,xychatai.com
   - DOMAIN-SUFFIX,fonts.gstatic.com
   - DOMAIN-SUFFIX,fonts.googleapis.com
-  # www.gstatic.com 中国直连可达(实测 200),含 reCAPTCHA 资源
-  # 直连可避免 fake-ip 触发 reCAPTCHA 风控导致登录页验证码加载失败(ERR_FAILED)
-  - DOMAIN-SUFFIX,www.gstatic.com
   # Google 中国备案域名(可直接访问,走代理反而绕路)
   - DOMAIN-SUFFIX,googleapis.cn
   - DOMAIN-SUFFIX,services.googleapis.cn
