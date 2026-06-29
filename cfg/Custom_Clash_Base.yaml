@@ -65,6 +65,9 @@ dns:
     "geosite:cn":
       - https://dns.alidns.com/dns-query
       - https://doh.pub/dns-query
+    "geosite:google":
+      - https://1.1.1.1/dns-query
+      - https://1.0.0.1/dns-query
     "geosite:gfw":
       - https://1.1.1.1/dns-query
       - https://1.0.0.1/dns-query
