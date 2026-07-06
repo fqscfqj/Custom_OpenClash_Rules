@@ -69,14 +69,14 @@ dns:
     - 202.102.152.3
     - 223.5.5.5
   proxy-server-nameserver:
-    - https://dns.alidns.com/dns-query
-    - https://doh.pub/dns-query
+    - 202.102.152.3
+    - 223.5.5.5
   nameserver:
     - 202.102.152.3
     - 223.5.5.5
   fallback:
-    - https://1.1.1.1/dns-query
-    - https://8.8.8.8/dns-query
+    - 1.1.1.1
+    - 8.8.8.8
   nameserver-policy:
     "geosite:private":
       - 202.102.152.3
