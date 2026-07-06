@@ -2,8 +2,8 @@
 # Custom_Clash_Base — OpenClash 基础模板
 # 所有参数均通过 OpenClash Web 界面(UCI) + 此模板原生管理
 # 不再需要 custom_overwrite.sh
+# mixed-port 由 OpenClash UCI 控制 (openclash.config.mixed_port)
 # ============================================================
-mixed-port: 7890
 allow-lan: true
 mode: rule
 log-level: info
