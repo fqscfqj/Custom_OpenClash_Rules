@@ -139,8 +139,4 @@ sniffer:
 
 proxies: []
 proxy-groups: []
-rules:
-  # 高优先级分类规则 — 在广告拦截之前匹配，避免误杀正经网站的埋点/统计域名
-  - GEOSITE,category-social-media-!cn,🚀 手动选择
-  - GEOSITE,category-games,🚀 手动选择
-  - GEOSITE,category-entertainment,🚀 手动选择
+rules: []
