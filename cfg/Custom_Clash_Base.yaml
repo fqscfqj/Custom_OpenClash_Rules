@@ -64,46 +64,45 @@ dns:
     - "*.ip6-localnet"
     - "+.ip6-mcastprefix"
   default-nameserver:
+    - 202.102.152.3
     - 223.5.5.5
-    - 119.29.29.29
   proxy-server-nameserver:
     - https://dns.alidns.com/dns-query
     - https://doh.pub/dns-query
   nameserver:
-    - https://dns.alidns.com/dns-query
-    - https://doh.pub/dns-query
+    - 202.102.152.3
+    - 223.5.5.5
   fallback:
     - https://1.1.1.1/dns-query
-    - https://1.0.0.1/dns-query
-    - https://8.8.4.4/dns-query
+    - https://8.8.8.8/dns-query
   nameserver-policy:
     "geosite:private":
-      - https://dns.alidns.com/dns-query
-      - https://doh.pub/dns-query
+      - 202.102.152.3
+      - 223.5.5.5
     "geosite:cn":
-      - https://dns.alidns.com/dns-query
-      - https://doh.pub/dns-query
+      - 202.102.152.3
+      - 223.5.5.5
     "geosite:microsoft":
-      - https://dns.alidns.com/dns-query
-      - https://doh.pub/dns-query
+      - 202.102.152.3
+      - 223.5.5.5
     "geosite:apple":
-      - https://dns.alidns.com/dns-query
-      - https://doh.pub/dns-query
+      - 202.102.152.3
+      - 223.5.5.5
     "geosite:google":
-      - https://1.1.1.1/dns-query
-      - https://1.0.0.1/dns-query
+      - 1.1.1.1
+      - 8.8.8.8
     "geosite:github":
-      - https://1.1.1.1/dns-query
-      - https://1.0.0.1/dns-query
+      - 1.1.1.1
+      - 8.8.8.8
     "geosite:category-ai-!cn":
-      - https://1.1.1.1/dns-query
-      - https://1.0.0.1/dns-query
+      - 1.1.1.1
+      - 8.8.8.8
     "geosite:gfw":
-      - https://1.1.1.1/dns-query
-      - https://1.0.0.1/dns-query
+      - 1.1.1.1
+      - 8.8.8.8
     "geosite:geolocation-!cn":
-      - https://1.1.1.1/dns-query
-      - https://1.0.0.1/dns-query
+      - 1.1.1.1
+      - 8.8.8.8
   fallback-filter:
     geoip: true
     geoip-code: CN
