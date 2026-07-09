@@ -496,6 +496,3 @@ payload:
   # 开发者镜像源
   - DOMAIN-SUFFIX,registry.npmmirror.com
   - DOMAIN-SUFFIX,pypi.tuna.tsinghua.edu.cn
-  # 米哈游国服(海外版 hoyoverse.com 走代理)
-  - DOMAIN-SUFFIX,mihoyo.com
-  - DOMAIN-SUFFIX,bbs.mihoyo.com
