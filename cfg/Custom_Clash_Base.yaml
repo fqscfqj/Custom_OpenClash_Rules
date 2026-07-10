@@ -13,9 +13,8 @@ ipv6: true
 # 以下参数在 OpenClash Web 界面无对应项，在此预设
 keep-alive-idle: 600
 geodata-mode: true
-global-client-fingerprint: chrome
 tcp-concurrent: true
-find-process-mode: strict
+find-process-mode: "off"
 unified-delay: true
 
 profile:
@@ -64,50 +63,48 @@ dns:
     - "*.ip6-localnet"
     - "+.ip6-mcastprefix"
   default-nameserver:
-    - 202.102.152.3
     - 223.5.5.5
+    - 119.29.29.29
   proxy-server-nameserver:
-    - 202.102.152.3
-    - 223.5.5.5
+    - https://dns.alidns.com/dns-query
+    - https://doh.pub/dns-query
   nameserver:
-    - 202.102.152.3
-    - 223.5.5.5
+    - https://dns.alidns.com/dns-query
+    - https://doh.pub/dns-query
   fallback:
-    - 1.1.1.1
-    - 8.8.8.8
+    - https://1.1.1.1/dns-query
+    - https://dns.google/dns-query
   nameserver-policy:
     "geosite:private":
-      - 202.102.152.3
-      - 223.5.5.5
+      - https://dns.alidns.com/dns-query
+      - https://doh.pub/dns-query
     "geosite:cn":
-      - 202.102.152.3
-      - 223.5.5.5
+      - https://dns.alidns.com/dns-query
+      - https://doh.pub/dns-query
     "geosite:microsoft":
-      - 202.102.152.3
-      - 223.5.5.5
+      - https://dns.alidns.com/dns-query
+      - https://doh.pub/dns-query
     "geosite:apple":
-      - 202.102.152.3
-      - 223.5.5.5
+      - https://dns.alidns.com/dns-query
+      - https://doh.pub/dns-query
     "geosite:google":
-      - 1.1.1.1
-      - 8.8.8.8
+      - https://1.1.1.1/dns-query
+      - https://dns.google/dns-query
     "geosite:github":
-      - 1.1.1.1
-      - 8.8.8.8
+      - https://1.1.1.1/dns-query
+      - https://dns.google/dns-query
     "geosite:category-ai-!cn":
-      - 1.1.1.1
-      - 8.8.8.8
+      - https://1.1.1.1/dns-query
+      - https://dns.google/dns-query
     "geosite:gfw":
-      - 1.1.1.1
-      - 8.8.8.8
+      - https://1.1.1.1/dns-query
+      - https://dns.google/dns-query
     "geosite:geolocation-!cn":
-      - 1.1.1.1
-      - 8.8.8.8
+      - https://1.1.1.1/dns-query
+      - https://dns.google/dns-query
   fallback-filter:
     geoip: true
     geoip-code: CN
-    geosite:
-      - geolocation-cn
     ipcidr:
       - 0.0.0.0/32
       - 240.0.0.0/4

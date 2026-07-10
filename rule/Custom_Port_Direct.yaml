@@ -1,4 +1,5 @@
-# 80/443 之外的端口规则，排除 DNS/DoT/DoQ 常见端口
+# 全 LAN 的 BT/PT 端口直连规则：放行 80/443 之外的端口，排除 DNS/DoT/DoQ 常见端口
+# 该规则有意对所有内网设备生效，确保任意设备运行下载客户端时均可直连对等端
 # REPO: https://github.com/Aethersailor/Custom_OpenClash_Rules
 # TOTAL: 8
 

@@ -5,13 +5,19 @@
 ## DNS 防泄漏
 
 - `cfg/Custom_Clash.ini` 已通过 `clash_rule_base` 引用 `cfg/Custom_Clash_Base.yaml`，生成配置时启用 Fake-IP 与 DoH。
-- 常规域名解析默认优先使用阿里/腾讯 DoH，命中 `fallback-filter` 的境外结果再回退到 Cloudflare DoH；依赖 `respect-rules` 与自定义公共 DNS 代理规则控制解析流量走向。
+- 常规域名解析默认优先使用阿里/腾讯 DoH，境外域名使用 Cloudflare/Google DoH；依赖 `respect-rules` 与自定义公共 DNS 代理规则控制解析流量走向。
 - 代理节点域名解析使用阿里/腾讯 DoH 直连以避免回环；`default-nameserver` 仅用于引导解析 DoH 域名，本身不是最终上游 DNS。
-- OpenClash 建议使用 Meta/Mihomo 内核，DNS 劫持模式建议使用“防火墙转发”而不是“Dnsmasq 转发”；关闭“追加上游 DNS”和“追加默认 DNS”。
+- OpenClash 建议使用 Meta/Mihomo 内核。本仓库对应的 Kwrt/OpenClash 环境已验证使用“Dnsmasq 转发”：Dnsmasq 只把请求转发到 Mihomo `7874`，同时保留本地域名解析；关闭“追加上游 DNS”和“追加默认 DNS”。
 - 如使用配置文件内置 DNS，请关闭 OpenClash 覆写设置里的“自定义上游 DNS 服务器”，不要只关闭“追加上游 DNS”。
 - 如必须启用“自定义上游 DNS 服务器”，需在下方“设置自定义上游 DNS 服务器”中至少添加一条 `NameServer` 组服务器，否则 OpenClash 会提示 `配置文件 DNS 选项下的 Nameserver 必须设置服务器`。
 - 端口直连规则已排除 53/784/853/5353/8853，避免 DNS/DoT/DoQ 被直连放行。
 - 浏览器或系统如果启用了“安全 DNS”，请关闭，或确保对应 DoH 域名/IP 会命中代理规则。
+
+## 路由器与 BT/PT
+
+- Mihomo 在路由器上不启用进程匹配，避免无意义的进程探测开销。
+- `rule/Custom_Port_Direct.yaml` 有意对整个 LAN 生效：未被更高优先级规则命中的非 80/443 流量默认直连，保证任意内网设备使用 BT/PT 时都能直接连接对等端。
+- 上述端口策略会让其他未识别的自定义端口流量一并直连；这是下载兼容性优先的取舍。
 
 ## IPv6 兼容模式
 
