@@ -57,8 +57,6 @@ dns:
     - "*.tailscale.com"
     - "www.gstatic.com"
     - "fonts.gstatic.com"
-    - "+.bsky.app"
-    - "+.nexusmods.com"
     - "+.ddns.net"
     - "+.noip.com"
     - "+.ip6-localhost"
