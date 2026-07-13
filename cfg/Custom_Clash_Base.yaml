@@ -14,7 +14,7 @@ ipv6: true
 keep-alive-idle: 600
 geodata-mode: true
 tcp-concurrent: true
-find-process-mode: strict
+find-process-mode: always
 unified-delay: true
 
 profile:
