@@ -479,9 +479,6 @@ payload:
   - DOMAIN-SUFFIX,xychatai.com
   - DOMAIN-SUFFIX,fonts.gstatic.com
   - DOMAIN-SUFFIX,fonts.googleapis.com
-  # Google 中国备案域名(可直接访问,走代理反而绕路)
-  - DOMAIN-SUFFIX,googleapis.cn
-  - DOMAIN-SUFFIX,services.googleapis.cn
   # 中国本土平台(原误配在 Proxy_Domain)
   - DOMAIN-SUFFIX,afdian.com
   # 企业办公/会议
