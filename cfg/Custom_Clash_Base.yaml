@@ -6,7 +6,7 @@
 # ============================================================
 allow-lan: true
 mode: rule
-log-level: info
+log-level: error
 external-controller: 0.0.0.0:9090
 ipv6: true
 
@@ -14,8 +14,11 @@ ipv6: true
 keep-alive-idle: 600
 geodata-mode: true
 tcp-concurrent: true
-find-process-mode: always
 unified-delay: true
+
+# find-process-mode 有 OpenClash UCI 覆写项，基础模板故意不写入。
+# 路由器环境请在 OpenClash 中明确选择 OFF；不要在此写 unquoted off，
+# 避免 YAML 1.1/中间转换器将其解析为布尔 false，导致 Mihomo 配置失效。
 
 profile:
   store-selected: true
@@ -65,7 +68,9 @@ dns:
   default-nameserver:
     - 202.102.152.3
     - 223.5.5.5
-  # 节点/Provider 域名必须能在代理尚未建立时直连解析，避免 DoH 自举回环。
+  # 冷启动保护：节点/Provider 域名必须能在代理尚未建立时直连解析。
+  # 不要把 default-nameserver、proxy-server-nameserver 改成依赖代理的 DoH，
+  # 否则 Provider 缓存为空时可能形成 DNS/代理自举回环。
   proxy-server-nameserver:
     - 202.102.152.3
     - 223.5.5.5
