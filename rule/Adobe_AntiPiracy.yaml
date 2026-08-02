@@ -1,0 +1,20 @@
+# Adobe 反盗版/授权验证屏蔽
+# REPO: https://github.com/Aethersailor/Custom_OpenClash_Rules
+# PURPOSE: 屏蔽 Adobe Genuine(正版验证)与授权激活相关域名,避免破解/GenP 环境弹反盗版验证
+# NOTE: 仅屏蔽验证相关域名,不影响 adobe.com 正常下载/更新/使用
+
+payload:
+  - DOMAIN,lmlicenses.wip4.adobe.com
+  - DOMAIN,lm.licenses.adobe.com
+  - DOMAIN,na1r.services.adobe.com
+  - DOMAIN,na4r.services.adobe.com
+  - DOMAIN,hlrcv.stage.adobe.com
+  - DOMAIN,hl2rcv.adobe.com
+  - DOMAIN-SUFFIX,adobegenuine.com
+  - DOMAIN,genuine.adobe.com
+  - DOMAIN,cc-api-data.adobe.io
+  - DOMAIN,practivate.adobe.com
+  - DOMAIN,activate.adobe.com
+  - DOMAIN,adobeereg.com
+  - DOMAIN,wip3.adobe.com
+  - DOMAIN,na2m-pr.licenses.adobe.com
