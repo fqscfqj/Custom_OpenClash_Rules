@@ -33,7 +33,8 @@ dns:
   respect-rules: true
   enhanced-mode: fake-ip
   fake-ip-range: 198.18.0.1/16
-  fake-ip-range6: fdfe:dcba:9876::1/64
+  # Deliberately omit fake-ip-range6: IPv6 must resolve to real addresses
+  # and go out through the ISP's native IPv6 route.
   fake-ip-filter-mode: blacklist
   fake-ip-filter:
     - "*.lan"
