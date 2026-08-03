@@ -31,8 +31,8 @@
 
 ## IPv6 兼容模式
 
-- 当前 `cfg/Custom_Clash_Base.yaml` 默认启用顶层 `ipv6: true`、`dns.ipv6: true` 和 `fake-ip-range6`，用于保留国内原生 IPv6，同时让 OpenClash 统一处理 AAAA 解析。
-- OpenClash 覆写建议同时开启 `IPv6`、`IPv6 DNS`、`China IPv6 Route` 与 `respect-rules`；DNS 劫持沿用本环境已验证的“Dnsmasq 转发”，并关闭“追加上游 DNS”“追加默认 DNS”。
-- OpenWrt / ImmortalWrt 的 LAN 口建议优先设置为：`RA 服务 = 服务器模式`、`DHCPv6 服务 = 关闭`、`NDP 代理 = 关闭`、`本地 IPv6 DNS 服务器 = 勾选`。如果个别客户端拿不到 IPv6，再把 `DHCPv6 服务` 调整为“服务器模式”，不要直接上“混合模式”。
-- 该模式的目标是“国内 IPv6 直连 + OpenClash 双栈分流”，因此建议配合 OpenClash 的 `China IPv6 Route` 使用；否则国外 AAAA 目标也可能被直接放行，体验会比较放飞自我。
+- 当前 `cfg/Custom_Clash_Base.yaml` 启用顶层 `ipv6: true`、`dns.ipv6: true`，但故意不配置 `fake-ip-range6`：国内域名返回真实 AAAA 并走运营商原生 IPv6，境外域名只使用 IPv4 fake-IP。
+- 当前目标模式是“IPv4 代理 + 国内 IPv6 原生直连”：OpenClash 覆写中关闭 `IPv6` 代理流量，开启 `IPv6 DNS`，保留 `China IPv6 Route` 与 `respect-rules`；DNS 劫持沿用“Dnsmasq 转发”，并关闭“追加上游 DNS”“追加默认 DNS”。
+- OpenWrt / ImmortalWrt 的 LAN 口建议使用：`RA 服务 = 服务器模式`、`DHCPv6 服务 = 关闭`、`NDP 代理 = 关闭`、`本地 IPv6 DNS 服务器 = 勾选`。如果网络中存在下级 IPv6 路由器、Mesh 或 NDP 代理需求，则保留对应的 DHCPv6/NDP 配置。
+- `fallback-filter.geosite` 已被 Mihomo 标记为废弃，域名分流统一由 `nameserver-policy` 负责。
 - 如果你的 WAN 没有稳定 IPv6，或更在意省心而不是双栈，可以把 `cfg/Custom_Clash_Base.yaml` 里的顶层 `ipv6` 与 `dns.ipv6` 改回 `false`，并在 OpenClash 覆写里同时关闭 IPv6 相关选项。
