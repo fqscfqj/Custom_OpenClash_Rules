@@ -4,7 +4,7 @@
 
 ## DNS 防泄漏
 
-- `cfg/Custom_Clash.ini` 已通过 `clash_rule_base` 引用 `cfg/Custom_Clash_Base.yaml`，生成配置时启用 Fake-IP。
+- 默认无 IPv6 入口 `cfg/Custom_Clash.ini` 引用 `cfg/Custom_Clash_Base.yaml`；IPv6 入口 `cfg/Custom_Clash_IPv6.ini` 引用 `cfg/Custom_Clash_Base_IPv6.yaml`。两套配置生成时均启用 Fake-IP。
 - 常规域名优先使用运营商 DNS 与阿里 DNS，境外域名使用 Cloudflare/Google UDP DNS；依赖 `respect-rules` 与自定义公共 DNS 代理规则控制解析流量走向。
 - 代理节点与 Provider 域名使用运营商 DNS 与阿里 DNS 直连解析，确保 Mihomo 冷启动、Provider 缓存为空时也能先取得节点，避免 DoH 自举回环。
 - **防回归约束：**不要把 `default-nameserver` 或 `proxy-server-nameserver` 全部替换成依赖代理的 DoH；历史提交 `1a09574` 曾因此造成冷启动自举回环，`05aaed2` 已恢复可靠的直连解析链路。
@@ -29,10 +29,24 @@
 - 核心日志默认使用 `error`；排障时可临时切换到 `warning` 或 `info`，完成后恢复。
 - 常规与地区 `url-test` 间隔为 600 秒，下载专用组为 300 秒，避免 Provider 健康检查与多个策略组重复高频测速。
 
-## IPv6 兼容模式
+## IPv6 版本选择
 
-- 当前 `cfg/Custom_Clash_Base.yaml` 启用顶层 `ipv6: true`、`dns.ipv6: true`，但故意不配置 `fake-ip-range6`：国内域名返回真实 AAAA 并走运营商原生 IPv6，境外域名只使用 IPv4 fake-IP。
-- 当前目标模式是“IPv4 代理 + 国内 IPv6 原生直连”：OpenClash 覆写中关闭 `IPv6` 代理流量，开启 `IPv6 DNS`，保留 `China IPv6 Route` 与 `respect-rules`；DNS 劫持沿用“Dnsmasq 转发”，并关闭“追加上游 DNS”“追加默认 DNS”。
+### 默认无 IPv6 版本
+
+- 使用 `cfg/Custom_Clash.ini`，其基础模板为 `cfg/Custom_Clash_Base.yaml`；顶层 `ipv6` 与 `dns.ipv6` 均为 `false`。
+- OpenClash 覆写中同时关闭 `IPv6` 代理流量、`IPv6 DNS`、`China IPv6 Route` 等 IPv6 相关选项，避免覆写模板值或继续保留 IPv6 绕行路径。
+- 仅修改 Clash/Mihomo YAML 不会关闭 OpenWrt 系统 IPv6。如需彻底关闭公网 IPv6，应停用 WAN6 的 IPv6 地址/前缀获取与委派，并把 LAN 的 `RA 服务`、`DHCPv6 服务`、`NDP 代理` 设为关闭，使终端不再获得可公网路由的 IPv6 地址。
+- OpenWrt 和终端上仍可能存在 `fe80::/10` 链路本地地址；该地址只用于本地链路，不代表仍有公网 IPv6 出口。
+
+### 支持 IPv6 版本
+
+- 使用 `cfg/Custom_Clash_IPv6.ini`，其基础模板为 `cfg/Custom_Clash_Base_IPv6.yaml`；顶层 `ipv6` 与 `dns.ipv6` 均为 `true`。
+- IPv6 基础模板故意不配置 `fake-ip-range6`：国内域名返回真实 AAAA 并走运营商原生 IPv6，境外域名继续使用 IPv4 fake-IP。
+- 目标模式是“IPv4 代理 + 国内 IPv6 原生直连”：OpenClash 覆写中关闭 `IPv6` 代理流量，开启 `IPv6 DNS`，保留 `China IPv6 Route` 与 `respect-rules`；DNS 劫持沿用“Dnsmasq 转发”，并关闭“追加上游 DNS”“追加默认 DNS”。
 - OpenWrt / ImmortalWrt 的 LAN 口建议使用：`RA 服务 = 服务器模式`、`DHCPv6 服务 = 关闭`、`NDP 代理 = 关闭`、`本地 IPv6 DNS 服务器 = 勾选`。如果网络中存在下级 IPv6 路由器、Mesh 或 NDP 代理需求，则保留对应的 DHCPv6/NDP 配置。
-- `fallback-filter.geosite` 已被 Mihomo 标记为废弃，域名分流统一由 `nameserver-policy` 负责。
-- 如果你的 WAN 没有稳定 IPv6，或更在意省心而不是双栈，可以把 `cfg/Custom_Clash_Base.yaml` 里的顶层 `ipv6` 与 `dns.ipv6` 改回 `false`，并在 OpenClash 覆写里同时关闭 IPv6 相关选项。
+
+### 切换后检查
+
+- 切换 INI 后重新执行订阅转换、更新并应用 OpenClash 配置，同时确认 OpenClash 覆写项与所选版本一致。
+- 让 LAN 客户端重新连接网络或续租地址，并清理旧 DNS 缓存；否则旧 AAAA 记录、IPv6 地址或路由可能影响测试结果。
+- `fallback-filter.geosite` 已被 Mihomo 标记为废弃，两个版本的域名分流均由 `nameserver-policy` 负责。

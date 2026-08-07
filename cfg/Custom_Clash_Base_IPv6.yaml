@@ -1,5 +1,5 @@
 # ============================================================
-# Custom_Clash_Base — OpenClash 默认无 IPv6 基础模板
+# Custom_Clash_Base_IPv6 — OpenClash IPv6 基础模板
 # 所有参数均通过 OpenClash Web 界面(UCI) + 此模板原生管理
 # 不再需要 custom_overwrite.sh
 # mixed-port 由 OpenClash UCI 控制 (openclash.config.mixed_port)
@@ -8,7 +8,7 @@ allow-lan: true
 mode: rule
 log-level: error
 external-controller: 0.0.0.0:9090
-ipv6: false
+ipv6: true
 
 # 以下参数在 OpenClash Web 界面无对应项，在此预设
 keep-alive-idle: 600
@@ -27,13 +27,14 @@ profile:
 dns:
   enable: true
   listen: 0.0.0.0:7874
-  ipv6: false
+  ipv6: true
   use-hosts: true
   use-system-hosts: false
   respect-rules: true
   enhanced-mode: fake-ip
   fake-ip-range: 198.18.0.1/16
-  # 无 IPv6 版本不配置 fake-ip-range6。
+  # Deliberately omit fake-ip-range6: IPv6 must resolve to real addresses
+  # and go out through the ISP's native IPv6 route.
   fake-ip-filter-mode: blacklist
   fake-ip-filter:
     - "*.lan"
