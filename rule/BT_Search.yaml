@@ -1,0 +1,10 @@
+payload:
+  # BT 搜索站点：单独交给“🔎 BT搜索”策略组，便于按锁区情况手动选节点。
+  - DOMAIN-SUFFIX,btdig.com
+  - DOMAIN-SUFFIX,bitsearch.to
+  - DOMAIN-SUFFIX,snowfl.com
+  - DOMAIN-SUFFIX,torrentz2.nz
+  - DOMAIN-SUFFIX,torrentseeker.com
+  - DOMAIN-SUFFIX,idope.se
+  - DOMAIN-SUFFIX,solidtorrent.to
+  - DOMAIN-SUFFIX,aiosearch.com

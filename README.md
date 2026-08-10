@@ -17,6 +17,7 @@
 
 ## 路由器与 BT/PT
 
+- BT 搜索站点（如 BTDigg、Snowfl、Torrentz2 等）单独归入“🔎 BT搜索”策略组；遇到锁区时可在该组手动切换节点。该组只控制搜索网站访问，不改变 BT/PT 下载端口的直连策略。
 - `cfg/Custom_Clash_Base.yaml` 故意不写 `find-process-mode`。请在 OpenClash 覆写设置中明确选择 `OFF`，不要选择仅表示“不覆写”的“禁用/0”。
 - 不要直接在基础 YAML 中写未加引号的 `find-process-mode: off`；YAML 1.1/中间转换器可能把 `off` 当作布尔值，历史提交 `5d33e5c` 至 `6c5cfc0` 已验证该问题会使最终配置失效。
 - 关闭 OpenClash 的“仅代理命中规则流量/Rule Match Proxy Mode”。本模板已有明确的 BT/PT 端口策略，该功能会重复插入对路由器透明代理无意义的进程名规则。
