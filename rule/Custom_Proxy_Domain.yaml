@@ -1,7 +1,7 @@
 # Generated from rule/Custom_Proxy.list
 # REPO: https://github.com/Aethersailor/Custom_OpenClash_Rules
 # SOURCE: https://github.com/Aethersailor/Custom_OpenClash_Rules/blob/main/rule/Custom_Proxy.list
-# TOTAL: 26
+# TOTAL: 27
 # NOTE: 已移除被 GEOSITE,google 覆盖的冗余项(gstatic.com/clientservices.googleapis.com/mtalk.google.com/dns.google)
 #       已移除被 GEOSITE,microsoft 覆盖的冗余项(onedrive.live.com)
 #       Google Play 下载链路依赖 googleapis.cn/services.googleapis.cn，明确强制代理
@@ -31,6 +31,7 @@ payload:
   - DOMAIN-SUFFIX,libredns.gr
   - DOMAIN-SUFFIX,mullvad.net
   - DOMAIN-SUFFIX,nexusmods.com
+  - DOMAIN-SUFFIX,npmjs.org
   - DOMAIN-SUFFIX,nextdns.io
   - DOMAIN-SUFFIX,opendns.com
   - DOMAIN-SUFFIX,quad9.net
