@@ -78,9 +78,16 @@ dns:
   nameserver:
     - 202.102.152.3
     - 223.5.5.5
+  # 目标已命中 DIRECT 时，使用国内 DNS 重新解析，避免境外 CDN 结果不稳定。
+  direct-nameserver:
+    - 202.102.152.3
+    - 223.5.5.5
+  direct-nameserver-follow-policy: false
+  # 境外解析使用加密 DoH；其域名会按现有规则经代理连接。
+  # DNS 服务器域名本身仍由 default-nameserver 直连解析，避免自举回环。
   fallback:
-    - 1.1.1.1
-    - 8.8.8.8
+    - https://cloudflare-dns.com/dns-query
+    - https://dns.google/dns-query
   nameserver-policy:
     "geosite:private":
       - 202.102.152.3
@@ -95,20 +102,20 @@ dns:
       - 202.102.152.3
       - 223.5.5.5
     "geosite:google":
-      - 1.1.1.1
-      - 8.8.8.8
+      - https://cloudflare-dns.com/dns-query
+      - https://dns.google/dns-query
     "geosite:github":
-      - 1.1.1.1
-      - 8.8.8.8
+      - https://cloudflare-dns.com/dns-query
+      - https://dns.google/dns-query
     "geosite:category-ai-!cn":
-      - 1.1.1.1
-      - 8.8.8.8
+      - https://cloudflare-dns.com/dns-query
+      - https://dns.google/dns-query
     "geosite:gfw":
-      - 1.1.1.1
-      - 8.8.8.8
+      - https://cloudflare-dns.com/dns-query
+      - https://dns.google/dns-query
     "geosite:geolocation-!cn":
-      - 1.1.1.1
-      - 8.8.8.8
+      - https://cloudflare-dns.com/dns-query
+      - https://dns.google/dns-query
   fallback-filter:
     geoip: true
     geoip-code: CN

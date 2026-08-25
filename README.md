@@ -5,10 +5,10 @@
 ## DNS 防泄漏
 
 - 默认无 IPv6 入口 `cfg/Custom_Clash.ini` 引用 `cfg/Custom_Clash_Base.yaml`；IPv6 入口 `cfg/Custom_Clash_IPv6.ini` 引用 `cfg/Custom_Clash_Base_IPv6.yaml`。两套配置生成时均启用 Fake-IP。
-- 常规域名优先使用运营商 DNS 与阿里 DNS，境外域名使用 Cloudflare/Google UDP DNS；依赖 `respect-rules` 与自定义公共 DNS 代理规则控制解析流量走向。
+- 常规域名优先使用运营商 DNS 与阿里 DNS；境外域名使用 Cloudflare/Google DoH，并由 `respect-rules` 与域名规则经代理连接。命中 `DIRECT` 的目标会以国内 DNS 重新解析，优先获得本地 CDN 结果。
 - 代理节点与 Provider 域名使用运营商 DNS 与阿里 DNS 直连解析，确保 Mihomo 冷启动、Provider 缓存为空时也能先取得节点，避免 DoH 自举回环。
 - **防回归约束：**不要把 `default-nameserver` 或 `proxy-server-nameserver` 全部替换成依赖代理的 DoH；历史提交 `1a09574` 曾因此造成冷启动自举回环，`05aaed2` 已恢复可靠的直连解析链路。
-- 新生成配置的“🚀 手动选择”默认先使用“🎯 全球直连”；确认 Provider 节点加载完成后，可在面板中切换为“♻️ 自动选择”。
+- 新生成配置的“🚀 手动选择”默认使用“♻️ 自动选择”；“🎯 全球直连”保留为手工回退选项。Provider 首次加载失败时可先手动切至直连排障。
 - OpenClash 建议使用 Meta/Mihomo 内核。本仓库对应的 Kwrt/OpenClash 环境已验证使用“Dnsmasq 转发”：Dnsmasq 只把请求转发到 Mihomo `7874`，同时保留本地域名解析；关闭“追加上游 DNS”和“追加默认 DNS”。
 - 如使用配置文件内置 DNS，请关闭 OpenClash 覆写设置里的“自定义上游 DNS 服务器”，不要只关闭“追加上游 DNS”。
 - 如必须启用“自定义上游 DNS 服务器”，需在下方“设置自定义上游 DNS 服务器”中至少添加一条 `NameServer` 组服务器，否则 OpenClash 会提示 `配置文件 DNS 选项下的 Nameserver 必须设置服务器`。
@@ -29,6 +29,8 @@
 
 - 核心日志默认使用 `error`；排障时可临时切换到 `warning` 或 `info`，完成后恢复。
 - 常规与地区 `url-test` 间隔为 600 秒，下载专用组为 300 秒，避免 Provider 健康检查与多个策略组重复高频测速。
+- 广告拦截仅保留广告联盟、中国区补充和劫持规则；不默认加载大规模 EasyPrivacy，以降低登录、统计和应用功能误杀。广告规则优先于自定义直连规则。
+- 不整套叠加 Loyalsoldier 的 `direct`、`proxy`、`cncidr` 等列表：现有 Geosite/GeoIP 已覆盖其主要用途。遇到漏网域名时，再从其列表按需补充到本地规则。
 
 ## IPv6 版本选择
 

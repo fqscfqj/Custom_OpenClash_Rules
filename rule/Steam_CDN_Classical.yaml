@@ -2,7 +2,7 @@
 # Converted from IP-CIDR to DOMAIN-SUFFIX for better stability
 # IP-CIDR rules removed (CDN IPs change frequently)
 # REPO: https://github.com/fqscfqj/Custom_OpenClash_Rules
-# TOTAL: 10
+# TOTAL: 9
 # ⚠️ 废弃/备用文件:Custom_Clash.ini 未引用此文件
 #    若启用会与 Steam_Page_Proxy.yaml 冲突(steampowered.com/steamcommunity.com/
 #    steamstatic.com/cm.steampowered.com 在两文件中策略相反:本文件直连,Page_Proxy 代理)
@@ -21,4 +21,3 @@ payload:
   - DOMAIN-SUFFIX,cm.steampowered.com
   - DOMAIN-SUFFIX,steamuserimages-a.akamaihd.net
   - DOMAIN-SUFFIX,steamvideo-a.akamaihd.net
-  - DOMAIN-SUFFIX,akamaized.net
