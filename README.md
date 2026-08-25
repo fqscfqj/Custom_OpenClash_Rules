@@ -5,7 +5,7 @@
 ## DNS 防泄漏
 
 - 默认无 IPv6 入口 `cfg/Custom_Clash.ini` 引用 `cfg/Custom_Clash_Base.yaml`；IPv6 入口 `cfg/Custom_Clash_IPv6.ini` 引用 `cfg/Custom_Clash_Base_IPv6.yaml`。两套配置生成时均启用 Fake-IP。
-- 常规域名优先使用运营商 DNS 与阿里 DNS；境外域名使用 Cloudflare/Google DoH，并由 `respect-rules` 与域名规则经代理连接。命中 `DIRECT` 的目标会以国内 DNS 重新解析，优先获得本地 CDN 结果。
+- 默认与境外域名使用 Cloudflare/Google DoH，并由 `respect-rules` 与域名规则经代理连接；国内域名和命中 `DIRECT` 的目标使用国内 DNS，优先获得本地 CDN 结果。
 - 代理节点与 Provider 域名使用运营商 DNS 与阿里 DNS 直连解析，确保 Mihomo 冷启动、Provider 缓存为空时也能先取得节点，避免 DoH 自举回环。
 - **防回归约束：**不要把 `default-nameserver` 或 `proxy-server-nameserver` 全部替换成依赖代理的 DoH；历史提交 `1a09574` 曾因此造成冷启动自举回环，`05aaed2` 已恢复可靠的直连解析链路。
 - 新生成配置的“🚀 手动选择”默认使用“♻️ 自动选择”；“🎯 全球直连”保留为手工回退选项。Provider 首次加载失败时可先手动切至直连排障。
@@ -52,4 +52,4 @@
 
 - 切换 INI 后重新执行订阅转换、更新并应用 OpenClash 配置，同时确认 OpenClash 覆写项与所选版本一致。
 - 让 LAN 客户端重新连接网络或续租地址，并清理旧 DNS 缓存；否则旧 AAAA 记录、IPv6 地址或路由可能影响测试结果。
-- `fallback-filter.geosite` 已被 Mihomo 标记为废弃，两个版本的域名分流均由 `nameserver-policy` 负责。
+- 两个版本均不使用 `fallback`；域名 DNS 分流完全由 `nameserver-policy` 负责，避免未知域名回落到运营商明文 DNS。

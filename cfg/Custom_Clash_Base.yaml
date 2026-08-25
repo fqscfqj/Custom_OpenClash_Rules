@@ -75,18 +75,15 @@ dns:
     - 202.102.152.3
     - 223.5.5.5
   nameserver:
-    - 202.102.152.3
-    - 223.5.5.5
+    # 未命中 nameserver-policy 的域名也使用 DoH，避免回落到运营商明文 DNS。
+    - https://cloudflare-dns.com/dns-query
+    - https://dns.google/dns-query
   # 目标已命中 DIRECT 时，使用国内 DNS 重新解析，避免境外 CDN 结果不稳定。
   direct-nameserver:
     - 202.102.152.3
     - 223.5.5.5
   direct-nameserver-follow-policy: false
-  # 境外解析使用加密 DoH；其域名会按现有规则经代理连接。
   # DNS 服务器域名本身仍由 default-nameserver 直连解析，避免自举回环。
-  fallback:
-    - https://cloudflare-dns.com/dns-query
-    - https://dns.google/dns-query
   nameserver-policy:
     "geosite:private":
       - 202.102.152.3
@@ -115,15 +112,6 @@ dns:
     "geosite:geolocation-!cn":
       - https://cloudflare-dns.com/dns-query
       - https://dns.google/dns-query
-  fallback-filter:
-    geoip: true
-    geoip-code: CN
-    # Mihomo 已弃用 fallback-filter.geosite；域名分流由 nameserver-policy 负责。
-    ipcidr:
-      - 0.0.0.0/32
-      - 240.0.0.0/4
-      - ::/128
-
 # 嗅探器:fake-ip 模式下还原 TLS SNI / HTTP Host,使基于域名的代理规则正常生效
 sniffer:
   enable: true
