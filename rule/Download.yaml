@@ -7,7 +7,8 @@ payload:
   - DOMAIN-SUFFIX,bunkr.ru
   - DOMAIN-SUFFIX,bunkr.is
   - DOMAIN-SUFFIX,bunkr.su
-  - DOMAIN-SUFFIX,c1be-b.cdn.cr
+  - DOMAIN-SUFFIX,cdn.cr
+  - DOMAIN-SUFFIX,filester.me
   - DOMAIN-SUFFIX,pixeldrain.com
   - DOMAIN-SUFFIX,civitai.com
   - DOMAIN-SUFFIX,githubusercontent.com
