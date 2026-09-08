@@ -2,7 +2,7 @@
 # REPO: https://github.com/Aethersailor/Custom_OpenClash_Rules
 # PURPOSE: 补充 GEOSITE,category-ai-!cn 可能遗漏的境外 AI 服务域名
 # NOTE: 中国 AI 服务(deepseek/zhipu/yiyan 等)不收录,依赖 GEOSITE,cn 兜底直连
-# TOTAL: 25
+# TOTAL: 26
 
 payload:
   - DOMAIN-SUFFIX,openai.com
@@ -30,3 +30,4 @@ payload:
   - DOMAIN-SUFFIX,hf.co
   - DOMAIN-SUFFIX,api.meta.ai
   - DOMAIN-SUFFIX,api.xiaomimimo.com
+  - DOMAIN-SUFFIX,api.commandcode.ai
