@@ -23,6 +23,7 @@ payload:
   - DOMAIN-SUFFIX,mega.nz
   - DOMAIN-SUFFIX,drive.google.com
   - DOMAIN-SUFFIX,docs.google.com
+  - DOMAIN-SUFFIX,drive.usercontent.google.com
   - DOMAIN-SUFFIX,dropbox.com
   - DOMAIN-SUFFIX,dropboxstatic.com
   - DOMAIN-SUFFIX,onedrive.live.com
