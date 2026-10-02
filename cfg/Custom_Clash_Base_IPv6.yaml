@@ -81,6 +81,13 @@ dns:
     - "+.ip6-loopback"
     - "*.ip6-localnet"
     - "+.ip6-mcastprefix"
+    # 需要真实公网 IP 的域名：客户端自带 SSRF/公网 IP 校验时（如 DeepSeek Harness
+    # 的 web-fetch、部分爬虫/MCP 工具）会拒绝 fake-IP 198.18.0.0/16 而直接报错。
+    # 这些域名放行真实解析，流量仍由 SNI 嗅探命中域名规则走代理，不影响分流。
+    - "+.github.com"
+    - "+.githubusercontent.com"
+    - "+.githubassets.com"
+    - "+.tavily.com"
   default-nameserver:
     - 202.102.152.3
     - 223.5.5.5
