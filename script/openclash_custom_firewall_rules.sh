@@ -15,8 +15,10 @@
 #      把发往任意 IPv6 地址的 53 端口劫持到本机 dnsmasq（→ Mihomo 7874），
 #      于是境外域名同样拿不到 AAAA。
 #   2) 终端用自己的 DoH / 硬编码 IPv6 地址拿到真实 AAAA 后直连境外 IPv6：
-#      对「从内网进入 + 经 WAN 出去 + 目的为非中国大陆 GUA」的 TCP/UDP 直接 reject。
-#      reject 而非 drop，客户端立刻收到 ICMPv6 不可达并回落到 IPv4 → 走代理。
+#      对「从内网进入 + 经 WAN 出去 + 目的为非中国大陆 GUA」的流量直接 reject。
+#      TCP 回 RST、UDP 回 ICMPv6 admin-prohibited，都是"立刻失败"而不是静默丢包，
+#      客户端会迅速回落到 IPv4 → 走代理（实测 TCP 约 2 秒内报 Connection refused，
+#      若只写普通 reject(icmpv6 port-unreachable) 则客户端会一直重传到超时）。
 #
 # 为什么不会误伤：
 #   - 规则带 iifname(内网) + oifname(WAN) 限定，只约束"内网主动出网"方向；
@@ -57,7 +59,7 @@ if [ "$ENABLE_IPV6_DNS_HIJACK" = "1" ]; then
    else
       nft insert rule inet fw4 dstnat position 0 \
          meta nfproto ipv6 meta l4proto { tcp, udp } th dport 53 \
-         counter redirect to :53 comment "OpenClash IPv6 DNS Hijack (custom)" 2>/dev/null \
+         counter redirect to :53 comment '"OpenClash IPv6 DNS Hijack (custom)"' 2>/dev/null \
          && LOG_TIP "Add IPv6 DNS Hijack rule successful." \
          || LOG_WARN "Add IPv6 DNS Hijack rule failed."
    fi
@@ -73,16 +75,31 @@ if [ "$ENABLE_NON_CN_IPV6_REJECT" = "1" ]; then
    fi
 
    if ! nft list set inet fw4 "$CN6_SET" 2>/dev/null | grep -q "elements = {"; then
-      LOG_WARN "China IPv6 route set is missing or empty, skip Non-CN IPv6 Reject rule (避免误伤国内 IPv6)."
-   elif nft list chain inet fw4 forward 2>/dev/null | grep -q "OpenClash Non-CN IPv6 Reject (custom)"; then
-      LOG_TIP "Non-CN IPv6 Reject rule already exists, skip."
+      LOG_WARN "China IPv6 route set is missing or empty, skip Non-CN IPv6 Reject rules (避免误伤国内 IPv6)."
    else
-      nft insert rule inet fw4 forward position 0 \
-         meta nfproto ipv6 iifname "$LAN_IF" oifname "$WAN_IF" meta l4proto { tcp, udp } \
-         ip6 daddr 2000::/3 ip6 daddr != @$CN6_SET \
-         counter reject comment "OpenClash Non-CN IPv6 Reject (custom)" 2>/dev/null \
-         && LOG_TIP "Add Non-CN IPv6 Reject rule successful (LAN=$LAN_IF WAN=$WAN_IF)." \
-         || LOG_WARN "Add Non-CN IPv6 Reject rule failed."
+      # TCP 用 tcp reset：客户端立刻收到 RST（实测 ~2 秒内失败），而不是静默等待超时
+      if nft list chain inet fw4 forward 2>/dev/null | grep -q "OpenClash Non-CN IPv6 Reject (custom tcp)"; then
+         LOG_TIP "Non-CN IPv6 Reject rule (tcp) already exists, skip."
+      else
+         nft insert rule inet fw4 forward position 0 \
+            meta nfproto ipv6 iifname "$LAN_IF" oifname "$WAN_IF" meta l4proto tcp \
+            ip6 daddr 2000::/3 ip6 daddr != @$CN6_SET \
+            counter reject with tcp reset comment '"OpenClash Non-CN IPv6 Reject (custom tcp)"' 2>/dev/null \
+            && LOG_TIP "Add Non-CN IPv6 Reject rule (tcp) successful (LAN=$LAN_IF WAN=$WAN_IF)." \
+            || LOG_WARN "Add Non-CN IPv6 Reject rule (tcp) failed."
+      fi
+
+      # UDP（QUIC/DoQ 等）回 ICMPv6 administratively prohibited
+      if nft list chain inet fw4 forward 2>/dev/null | grep -q "OpenClash Non-CN IPv6 Reject (custom udp)"; then
+         LOG_TIP "Non-CN IPv6 Reject rule (udp) already exists, skip."
+      else
+         nft insert rule inet fw4 forward position 0 \
+            meta nfproto ipv6 iifname "$LAN_IF" oifname "$WAN_IF" meta l4proto udp \
+            ip6 daddr 2000::/3 ip6 daddr != @$CN6_SET \
+            counter reject with icmpv6 admin-prohibited comment '"OpenClash Non-CN IPv6 Reject (custom udp)"' 2>/dev/null \
+            && LOG_TIP "Add Non-CN IPv6 Reject rule (udp) successful." \
+            || LOG_WARN "Add Non-CN IPv6 Reject rule (udp) failed."
+      fi
    fi
 fi
 

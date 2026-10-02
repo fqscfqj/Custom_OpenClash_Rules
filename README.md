@@ -77,7 +77,7 @@ uci commit openclash
 `dns.ipv6` 只能管住“通过路由器 DNS 解析”的终端。终端自带 DoH、或硬编码 IPv6 DNS 时仍可能拿到境外真实 AAAA 并直连境外 IPv6。因此把 `script/openclash_custom_firewall_rules.sh` 部署到 `/etc/openclash/custom/openclash_custom_firewall_rules.sh`（OpenClash 每次启动后自动调用），它做两件事：
 
 1. **劫持内网 IPv6 DNS**：`53/TCP+UDP` 到任意 IPv6 地址的请求 redirect 到本机 dnsmasq → Mihomo，于是自带 IPv6 DNS 的终端同样拿不到境外 AAAA。
-2. **拒绝非中国大陆 IPv6 出网**：对「从内网进入（`iifname` 内网口）+ 经 WAN 出去（`oifname` WAN 口）+ 目的为 `2000::/3` 且不在 `china_ip6_route` 集合」的 TCP/UDP `reject`。`reject` 而非 `drop`，终端立刻收到 ICMPv6 不可达并回落到 IPv4 走代理。
+2. **拒绝非中国大陆 IPv6 出网**：对「从内网进入（`iifname` 内网口）+ 经 WAN 出去（`oifname` WAN 口）+ 目的为 `2000::/3` 且不在 `china_ip6_route` 集合」的流量直接拒绝。TCP 回 RST、UDP 回 ICMPv6 `admin-prohibited`，都是“立刻失败”而不是静默丢包，终端会迅速回落到 IPv4 走代理（实测 TCP 约 2 秒内报 `Connection refused`；若用普通 `reject` 只回 ICMPv6 port-unreachable，Windows 会一直重传到 20 秒超时，故必须用 `reject with tcp reset`）。
 
 不会误伤的原因：
 

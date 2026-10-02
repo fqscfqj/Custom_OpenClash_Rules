@@ -1,0 +1,2 @@
+# 脚本必须保持 LF，否则路由器上会因 CRLF 无法执行
+*.sh text eol=lf
