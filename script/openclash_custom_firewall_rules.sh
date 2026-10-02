@@ -28,6 +28,8 @@
 #
 # 关闭方式: 把下面两个开关置 0 后重启 OpenClash；或删除本文件。
 #           注意：已注入内核的规则要等 `fw4 reload` 或重启路由器才会消失。
+# 策略可调: NON_CN_IPV6_ALLOW 可填境外 IPv6 前缀白名单（默认空）。
+#           是否该放行见 README 的实测对比；默认留空是有数据支撑的取舍。
 # ============================================================
 
 . /usr/share/openclash/log.sh 2>/dev/null
@@ -37,6 +39,13 @@ command -v LOG_WARN >/dev/null 2>&1 || LOG_WARN() { logger -t openclash "$*" 2>/
 # ---- 开关 ----
 ENABLE_IPV6_DNS_HIJACK=1      # 劫持内网 IPv6 DNS(53) 到本机 dnsmasq
 ENABLE_NON_CN_IPV6_REJECT=1   # 拒绝内网经 WAN 访问非中国大陆 IPv6
+
+# ---- 可选白名单：允许直连的境外 IPv6 前缀（留空 = 境外 IPv6 一律拒绝、回落 IPv4 代理）----
+# 实测结论见 README：境外原生 IPv6 相对代理没有吞吐优势（7.6 vs 7.1 MB/s），
+# TLS 反而更慢，且明文 DNS 的 AAAA 会被污染、被墙站点即使拿到真实 AAAA 也不通，
+# 因此默认留空。若确有服务需要走原生 IPv6，在此按空格分隔填写前缀，例如：
+#   NON_CN_IPV6_ALLOW="2606:4700::/32 2a06:98c1::/32"    # Cloudflare
+NON_CN_IPV6_ALLOW=""
 
 # ---- 接口（默认取 OpenClash UCI 中的设置）----
 LAN_IF=$(uci -q get openclash.config.lan_interface_name)
@@ -77,29 +86,33 @@ if [ "$ENABLE_NON_CN_IPV6_REJECT" = "1" ]; then
    if ! nft list set inet fw4 "$CN6_SET" 2>/dev/null | grep -q "elements = {"; then
       LOG_WARN "China IPv6 route set is missing or empty, skip Non-CN IPv6 Reject rules (避免误伤国内 IPv6)."
    else
+      # 白名单前缀 → 追加为排除条件（多个 ip6 daddr != 之间是 AND 关系）
+      ALLOW_EXPR=""
+      for p in $NON_CN_IPV6_ALLOW; do
+         ALLOW_EXPR="$ALLOW_EXPR ip6 daddr != $p"
+      done
+      [ -n "$ALLOW_EXPR" ] && LOG_TIP "Non-CN IPv6 allow list: $NON_CN_IPV6_ALLOW"
+
+      # 每次启动都按本脚本的配置重建，保证白名单改动立即生效（不残留旧条件）
+      for h in $(nft -a list chain inet fw4 forward 2>/dev/null | awk '/OpenClash Non-CN IPv6 Reject \(custom/{print $NF}'); do
+         nft delete rule inet fw4 forward handle "$h" 2>/dev/null
+      done
+
       # TCP 用 tcp reset：客户端立刻收到 RST（实测 ~2 秒内失败），而不是静默等待超时
-      if nft list chain inet fw4 forward 2>/dev/null | grep -q "OpenClash Non-CN IPv6 Reject (custom tcp)"; then
-         LOG_TIP "Non-CN IPv6 Reject rule (tcp) already exists, skip."
-      else
-         nft insert rule inet fw4 forward position 0 \
-            meta nfproto ipv6 iifname "$LAN_IF" oifname "$WAN_IF" meta l4proto tcp \
-            ip6 daddr 2000::/3 ip6 daddr != @$CN6_SET \
-            counter reject with tcp reset comment '"OpenClash Non-CN IPv6 Reject (custom tcp)"' 2>/dev/null \
-            && LOG_TIP "Add Non-CN IPv6 Reject rule (tcp) successful (LAN=$LAN_IF WAN=$WAN_IF)." \
-            || LOG_WARN "Add Non-CN IPv6 Reject rule (tcp) failed."
-      fi
+      nft insert rule inet fw4 forward position 0 \
+         meta nfproto ipv6 iifname "$LAN_IF" oifname "$WAN_IF" meta l4proto tcp \
+         ip6 daddr 2000::/3 ip6 daddr != @$CN6_SET $ALLOW_EXPR \
+         counter reject with tcp reset comment '"OpenClash Non-CN IPv6 Reject (custom tcp)"' 2>/dev/null \
+         && LOG_TIP "Add Non-CN IPv6 Reject rule (tcp) successful (LAN=$LAN_IF WAN=$WAN_IF)." \
+         || LOG_WARN "Add Non-CN IPv6 Reject rule (tcp) failed."
 
       # UDP（QUIC/DoQ 等）回 ICMPv6 administratively prohibited
-      if nft list chain inet fw4 forward 2>/dev/null | grep -q "OpenClash Non-CN IPv6 Reject (custom udp)"; then
-         LOG_TIP "Non-CN IPv6 Reject rule (udp) already exists, skip."
-      else
-         nft insert rule inet fw4 forward position 0 \
-            meta nfproto ipv6 iifname "$LAN_IF" oifname "$WAN_IF" meta l4proto udp \
-            ip6 daddr 2000::/3 ip6 daddr != @$CN6_SET \
-            counter reject with icmpv6 admin-prohibited comment '"OpenClash Non-CN IPv6 Reject (custom udp)"' 2>/dev/null \
-            && LOG_TIP "Add Non-CN IPv6 Reject rule (udp) successful." \
-            || LOG_WARN "Add Non-CN IPv6 Reject rule (udp) failed."
-      fi
+      nft insert rule inet fw4 forward position 0 \
+         meta nfproto ipv6 iifname "$LAN_IF" oifname "$WAN_IF" meta l4proto udp \
+         ip6 daddr 2000::/3 ip6 daddr != @$CN6_SET $ALLOW_EXPR \
+         counter reject with icmpv6 admin-prohibited comment '"OpenClash Non-CN IPv6 Reject (custom udp)"' 2>/dev/null \
+         && LOG_TIP "Add Non-CN IPv6 Reject rule (udp) successful." \
+         || LOG_WARN "Add Non-CN IPv6 Reject rule (udp) failed."
    fi
 fi
 

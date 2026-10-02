@@ -119,6 +119,41 @@ nft list set inet fw4 china_ip6_route | head -3
 | `curl -6 https://[2606:4700:4700::1111]/` | 约 2s 内 `Connection refused`（被 RST 拒绝，随即回落 IPv4） |
 | `curl -4 https://www.google.com/` | 200（经代理，约 1.2s） |
 
+### 国外 IPv6 vs 代理 IPv4 实测对比（2026-10，本线路）
+
+测试要点：**必须用字面 IPv6 地址 + `--resolve` 指定 SNI**，否则会被“境外域名本来就不返回 AAAA”的设计挡住，测不到线路真实质量。
+
+| 目标 | 原生 IPv6 直连 | 经代理 IPv4 |
+| --- | --- | --- |
+| Cloudflare 站点（未被墙） | 200；connect 0.18–0.22s，TLS 0.42–0.88s，total 1.8–2.9s | 200；TLS ≈0.5s，total 1.2–1.9s |
+| Google（被墙，真实 AAAA `2001:4860:482d:7700::`） | **12s 无响应直接超时** | 200（≈1.0s） |
+| 20MB 下载 `speed.cloudflare.com` | 7.6 MB/s（61 Mbps） | 7.1 MB/s（57 Mbps） |
+| 明文 DNS 查 Google AAAA | AliDNS 返回 `2001::1`（污染应答，连上就是黑洞） | — |
+| ping6 RTT（CF/Google/Quad9） | 185–224 ms，0% 丢包 | ICMP 对照：8.8.8.8 199ms、9.9.9.9 296ms、1.1.1.1 不通 |
+| 国内 IPv6（taobao） | 200；connect 0.016s，total 0.07s | 国内 IPv4 同样 200（0.10–0.19s） |
+| 国内镜像 38MB 吞吐（TUNA） | IPv6 **48 MB/s** | IPv4 72 MB/s |
+
+**结论：默认“拒绝境外 IPv6、回落 IPv4 代理”是有数据支撑的取舍。**
+
+- 吞吐没有优势：境外原生 IPv6 与代理几乎持平（7.6 vs 7.1 MB/s），TLS 反而更慢（0.42–0.88s vs ≈0.5s）。
+- 行为不可预测：被墙站点即使拿到真实 AAAA 也完全不通（TCP 443 被阻断/黑洞），而未屏蔽站点能通 —— 结果是同一台设备上“有的站走 IPv6、有的站走 IPv4 代理”，排障困难。
+- 明文 DNS 的 AAAA 会被污染：实测 AliDNS 对 `www.google.com` 返回 `2001::1`，连上去就是 6–12s 黑洞超时。本配置对 `geosite:google` 等走加密 DNS 不受影响，但任何自带明文 DNS 的终端都会踩坑——这也正是需要 53 端口劫持 + 兜底拒绝的原因。
+- 国内 IPv6 收益明显（taobao 首字节 16ms、整页 70ms），因此 **国内保留 IPv6 + 境外一律 IPv4** 是当前线路下的最优组合。
+
+需要放行特定境外 IPv6（例如只有 IPv6 入口的服务）时，编辑 `script/openclash_custom_firewall_rules.sh` 顶部的白名单：
+
+```sh
+NON_CN_IPV6_ALLOW="2606:4700::/32 2a06:98c1::/32"   # 例：Cloudflare
+```
+
+改完执行 `sh /etc/openclash/custom/openclash_custom_firewall_rules.sh` 立即生效（脚本每次 OpenClash 启动都会按此重建规则，不会残留旧条件）。已实测：白名单内目标放行、白名单外仍然 2s 内被 RST 拒绝、国内 IPv6 全程不受影响。
+
+### 国内 IPv4 / IPv6 未受影响（实测确认）
+
+- 国内域名 A 与 AAAA 都是**真实地址**（如 `www.taobao.com` → 真实 A + `2408:8719:...`），不是 `198.18.x.x`。
+- 10 轮连续查询 + 20 次 5 秒间隔采样，结果完全一致（baidu=2、taobao=2、bilibili=4、163=1 条 AAAA），没有出现 AAAA 抖动；国内 IPv4 连通性正常（taobao/jd 200，0.10–0.19s）。
+- IPv6 兜底规则只匹配 `ip6`（IPv6）且只作用于“内网主动出网”方向，不触碰任何 IPv4 流量与端口直连规则，BT/PT 的 IPv4 直连策略不受影响。
+
 ### IPv6 相关常见坑
 
 - 启动日志里出现 `[Warning] Please Note That Network May Abnormal With IPv6's DHCP Server` 属**预期现象**：OpenClash 只要看到「IPv6 代理流量=关闭」且 LAN 的 DHCPv6 服务未禁用就会提示。本方案正是要“有 IPv6 地址、但 IPv6 不进内核”，忽略即可（该提示出现在 `/etc/init.d/openclash` 的 `ipv6_enable=0 && dhcp.lan.dhcpv6 != disabled` 分支）。
