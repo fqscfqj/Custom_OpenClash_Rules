@@ -1,8 +1,22 @@
 # ============================================================
 # Custom_Clash_Base_IPv6 — OpenClash IPv6 基础模板
+# 目标形态：国内服务走运营商原生 IPv6，翻墙流量一律走 IPv4 代理
 # 所有参数均通过 OpenClash Web 界面(UCI) + 此模板原生管理
-# 不再需要 custom_overwrite.sh
 # mixed-port 由 OpenClash UCI 控制 (openclash.config.mixed_port)
+#
+# 实测行为（Mihomo alpha-g88dcbf7 / OpenClash 0.47.168，2026-10 验证）：
+#   ipv6: true + dns.ipv6: true + 不写 fake-ip-range6
+#     → 命中 fake-ip-filter 的国内域名：返回真实 A + 真实 AAAA（原生 IPv6 直连）
+#     → 未命中的境外域名：返回 198.18.x.x fake IPv4，AAAA 为空
+#       （终端只能走 IPv4 → 透明代理 → 节点 IPv4 出口）
+#   缺少 ipv6: true 或 dns.ipv6: true 时，AAAA 会被整体清空，国内也会失去 IPv6。
+#   因此这两个值必须同时为 true（OpenClash 勾选「IPv6 DNS Resolve」即可）。
+#
+# 防回归约束：
+#   - 绝对不要设置 fake-ip-range6。一旦设置，境外域名会返回无法路由的 fake IPv6
+#     （fd00::x / fdfe:dcba:9876::x），终端优先尝试该地址导致卡顿或直连失败。
+#   - 部分版本内核连 `fake-ip-range6: fdfe:dcba:9876::1/126`（文档里的默认写法）
+#     都会解析失败并报 `ipnet don't have valid ip`，直接导致内核无法启动。
 # ============================================================
 allow-lan: true
 mode: rule
@@ -33,8 +47,9 @@ dns:
   respect-rules: true
   enhanced-mode: fake-ip
   fake-ip-range: 198.18.0.1/16
-  # Deliberately omit fake-ip-range6: IPv6 must resolve to real addresses
-  # and go out through the ISP's native IPv6 route.
+  # 故意不写 fake-ip-range6：IPv6 必须解析成真实地址，走运营商原生 IPv6 出口。
+  # OpenClash 会在此列表里自动加入 rule-set:oc-cn-domain（国内域名 → 真实 IP），
+  # 这正是“国内域名能拿到真实 AAAA”的前提；不要删除该自动注入项。
   fake-ip-filter-mode: blacklist
   fake-ip-filter:
     - "*.lan"

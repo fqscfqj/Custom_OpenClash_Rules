@@ -1,8 +1,13 @@
 # ============================================================
 # Custom_Clash_Base — OpenClash 默认无 IPv6 基础模板
 # 所有参数均通过 OpenClash Web 界面(UCI) + 此模板原生管理
-# 不再需要 custom_overwrite.sh
 # mixed-port 由 OpenClash UCI 控制 (openclash.config.mixed_port)
+#
+# 注意：本模板的 ipv6 / dns.ipv6 会被 OpenClash 覆写项覆盖——
+#   只要勾选「IPv6 DNS Resolve」(openclash.config.ipv6_dns=1)，
+#   yml_change.sh 就会强制写入 ipv6: true 与 dns.ipv6: true。
+#   需要“国内 IPv6 + 境外 IPv4”时请改用 Custom_Clash_Base_IPv6.yaml，
+#   并把订阅模板指向 cfg/Custom_Clash_IPv6.ini。
 # ============================================================
 allow-lan: true
 mode: rule

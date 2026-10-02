@@ -1,6 +1,6 @@
 # Custom OpenClash Rules
 
-个人用。
+个人用。路由器 OpenWrt 25.12.5 (x86/64) + OpenClash 0.47.168 + Mihomo Meta。
 
 ## DNS 防泄漏
 
@@ -15,15 +15,124 @@
 - 端口直连规则已排除 53/784/853/5353/8853，避免 DNS/DoT/DoQ 被直连放行。
 - 浏览器或系统如果启用了“安全 DNS”，请关闭，或确保对应 DoH 域名/IP 会命中代理规则。
 
+## IPv6 分流：国内原生 IPv6，境外一律 IPv4
+
+### 设计目标
+
+- **国内服务**：返回真实 A + 真实 AAAA，终端优先走运营商原生 IPv6，完全不经过内核与代理（省 CPU、延迟最低）。
+- **翻墙流量**：只返回 `198.18.0.0/16` 的 fake IPv4，**AAAA 为空**；终端只能走 IPv4 → 透明代理 → 节点 IPv4 出口。国外 IPv6 线路质量差且不可控，因此翻墙流量不碰 IPv6。
+- **IPv6 透明代理保持关闭**（`ipv6_enable=0`）：IPv6 流量不进入内核，既避免 IPv6 被节点以 IPv6 出口送出，也避免多一套 tproxy6/规则开销。
+
+### 实测记录（Mihomo alpha-g88dcbf7 / OpenClash 0.47.168，2026-10）
+
+在路由器上用独立端口起临时内核实测 `A` / `AAAA`（不改动线上配置）：
+
+| `ipv6` | `dns.ipv6` | `fake-ip-range6` | 国内域名 AAAA | 境外域名 AAAA | 结论 |
+| --- | --- | --- | --- | --- | --- |
+| true | true | 不写 | 真实（如 `2408:871a:...`） | 空 | ✅ 目标形态 |
+| true | true | `fd00::/112` | 真实 | `fd00::x`（fake ULA） | ❌ 境外拿到无法路由的地址 |
+| true | true | `fdfe:dcba:9876::1/126` | — | — | ❌ 内核 fatal：`ipnet don't have valid ip`，起不来 |
+| false | true | 不写 | 空 | 空 | ❌ 国内也失去 IPv6 |
+| true | false | 不写 | 空 | 空 | ❌ 同上 |
+
+由此得到三条硬约束：
+
+1. `ipv6: true` 与 `dns.ipv6: true` **必须同时为 true**。任缺其一，AAAA 会被整体清空，国内也会退化成纯 IPv4。
+2. **绝对不要设置 `fake-ip-range6`**。它一旦有值，境外域名就会拿到 fake IPv6，终端会优先尝试这个无法路由的地址。“境外没有 AAAA”正是靠“不写这个键”实现的。
+3. OpenClash 覆写里的「Fake-IP Range (IPv6 Cidr)」保持留空/Disable；`script/openclash_custom_overwrite.sh` 会再删一次该行作为防回归守卫（用 `sed` 精确删行，不再依赖 ruby）。
+
+### 生效链路
+
+1. OpenClash 在 `dns.fake-ip-filter` 中自动注入 `rule-set:oc-cn-domain`（需要 `china_ip_route` 非 0），国内域名因此跳过 fake-IP。
+2. 这些域名按 `nameserver-policy` 的 `geosite:cn` 用国内 DNS 解析 → 得到真实 A + 真实 AAAA。
+3. 其余（境外）域名进入 fake-IP 池只分配 IPv4，`AAAA` 查询返回空。
+4. 终端拿到真实 AAAA → 直接走原生 IPv6，内核完全不参与；拿到 fake IPv4 → 被 `openclash` 链 redirect 进内核 → 按规则走代理。
+5. 境外域名的 IPv4 fake-IP 只能在内核里映射回域名，因此域名规则（`GEOSITE`/`RULE-SET`）依然生效。
+
+### 路由器侧必须一致的设置
+
+| LuCI 位置 | UCI | 应为 | 说明 |
+| --- | --- | --- | --- |
+| 覆写设置 → IPv6 | `ipv6_dns` | `1` | 同时写出 `ipv6: true` + `dns.ipv6: true`；这是国内拿到 AAAA 的前提 |
+| 覆写设置 → IPv6 | `ipv6_enable` | `0` | IPv6 不进内核，避免境外 IPv6 被代理/被节点以 IPv6 送出 |
+| 覆写设置 → IPv6 | `fakeip_range6` / `fake_ip_range6_enable` | 留空 / `0` | 见上面硬约束 2、3 |
+| 覆写设置 → 规则 | `enable_rule_proxy` | `0` | 见「路由器与 BT/PT」中的说明 |
+| 配置文件订阅 | `custom_template_url` | `.../cfg/Custom_Clash_IPv6.ini` | 使用 IPv6 版模板入口 |
+| 配置文件订阅 | `chnr6_custom_url` | `https://ispip.clang.cn/all_cn_ipv6.txt` | 兜底脚本用它做“中国大陆 IPv6”白名单 |
+
+切换方式（命令行，改完重启 OpenClash 即会重新生成配置）：
+
+```sh
+uci set openclash.config.ipv6_dns='1'
+uci set openclash.config.ipv6_enable='0'
+uci set openclash.config.enable_rule_proxy='0'
+uci delete openclash.config.fakeip_range6 2>/dev/null
+uci set openclash.@config_subscribe[0].custom_template_url='https://raw.githubusercontent.com/fqscfqj/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash_IPv6.ini'
+uci commit openclash
+/etc/init.d/openclash restart
+```
+
+### 防火墙兜底脚本（IPv6 防绕过）
+
+`dns.ipv6` 只能管住“通过路由器 DNS 解析”的终端。终端自带 DoH、或硬编码 IPv6 DNS 时仍可能拿到境外真实 AAAA 并直连境外 IPv6。因此把 `script/openclash_custom_firewall_rules.sh` 部署到 `/etc/openclash/custom/openclash_custom_firewall_rules.sh`（OpenClash 每次启动后自动调用），它做两件事：
+
+1. **劫持内网 IPv6 DNS**：`53/TCP+UDP` 到任意 IPv6 地址的请求 redirect 到本机 dnsmasq → Mihomo，于是自带 IPv6 DNS 的终端同样拿不到境外 AAAA。
+2. **拒绝非中国大陆 IPv6 出网**：对「从内网进入（`iifname` 内网口）+ 经 WAN 出去（`oifname` WAN 口）+ 目的为 `2000::/3` 且不在 `china_ip6_route` 集合」的 TCP/UDP `reject`。`reject` 而非 `drop`，终端立刻收到 ICMPv6 不可达并回落到 IPv4 走代理。
+
+不会误伤的原因：
+
+- 规则带 `iifname` + `oifname` 限定，只管“内网主动出网”方向；公网主动连入内网（BT/PT 入站、IPv6 直连访问内网服务）完全不匹配，ICMPv6 差错报文（PMTU）也不受影响。
+- 国内 IPv6 目的地在 `china_ip6_route` 白名单内（已实测覆盖 `2408:8214::/31` 这一本机 WAN/LAN 前缀、`2408:871a::/31` 百度、`2408:8711:10::/30` 腾讯、`240e::/20` 电信等），国内 IPv6 直连不受影响。
+- 集合文件缺失或为空时脚本会跳过该规则并告警，不会把国内 IPv6 一起掐掉。
+- 脚本幂等（按注释判断是否已注入）；`fw4 reload` 会清掉这些规则，OpenClash 下次启动会重新写入。
+
+脚本顶部两个开关（`ENABLE_IPV6_DNS_HIJACK` / `ENABLE_NON_CN_IPV6_REJECT`）置 0 即可分别关闭；不需要时直接删除该文件。
+
+### 验证方法
+
+```sh
+# 1) 生成配置里应有 ipv6: true / dns.ipv6: true，且没有 fake-ip-range6
+grep -nE '^ipv6:|^  ipv6:|fake-ip-range6' /etc/openclash/<配置名>.yaml
+
+# 2) 国内域名要有真实 AAAA，境外域名必须为空
+nslookup -type=AAAA www.baidu.com 127.0.0.1     # 期望 2408:... 真实地址
+nslookup -type=AAAA www.qq.com    127.0.0.1     # 期望 2408:... 真实地址
+nslookup -type=AAAA www.google.com 127.0.0.1    # 期望无 Address（为空）
+nslookup -type=A    www.google.com 127.0.0.1    # 期望 198.18.x.x
+
+# 3) 兜底规则是否注入
+nft list chain inet fw4 dstnat  | grep -i 'IPv6 DNS Hijack'
+nft list chain inet fw4 forward | grep -i 'Non-CN IPv6 Reject'
+nft list set inet fw4 china_ip6_route | head -3
+```
+
+终端侧建议用 `curl -6` / `nslookup ... 2001:4860:4860::8888` 各测一次：国内 IPv6 应能连通，境外 IPv6 应快速失败并回落 IPv4。
+
+### IPv6 相关常见坑
+
+- **不要把 LAN 的 DHCPv6 服务一刀切关掉**。本环境存在下级设备做 DHCPv6-PD（`ip -6 route` 里能看到 `2408:...::/62 via fe80::x dev br-lan` 这类经 br-lan 的委派路由），关掉 DHCPv6 会直接断掉下级网段的 IPv6。只在“确认没有下级 IPv6 路由器/Mesh”时才考虑 `RA=server + DHCPv6=off` 的极简组合。
+- 终端上的 DNS 必须是路由器地址（IPv4 + IPv6 都要有）。若 `odhcpd` 通告的上游/第三方 IPv6 DNS 被终端采用，境外域名会拿到真实 AAAA → 由兜底脚本拒绝（会回落 IPv4），但这属于“靠兜底救回来”，不是正常状态。
+- 修改 IPv6 相关设置后，务必让终端重新获取地址并清 DNS 缓存，否则旧 AAAA 会干扰判断。
+- 只改 Clash YAML 不会关闭 OpenWrt 系统 IPv6。要彻底关掉公网 IPv6，需要停用 WAN6 的地址/前缀获取与委派，并把 LAN 的 `RA 服务`、`DHCPv6 服务`、`NDP 代理` 全部设为关闭，使终端不再获得可公网路由的 IPv6 地址（`fe80::/10` 链路本地地址仍会存在，属正常现象）。
+
+### 两个版本的差异
+
+- 默认无 IPv6 版本使用 `cfg/Custom_Clash.ini` + `cfg/Custom_Clash_Base.yaml`：顶层 `ipv6` 与 `dns.ipv6` 均为 `false`，AAAA 全部返回空，终端只能用 IPv4（国内也走 IPv4）。
+- 支持 IPv6 版本使用 `cfg/Custom_Clash_IPv6.ini` + `cfg/Custom_Clash_Base_IPv6.yaml`：顶层 `ipv6` 与 `dns.ipv6` 均为 `true`，按上文实现“国内 IPv6 + 境外 IPv4”。
+- 注意：`ipv6` / `dns.ipv6` 会被 OpenClash 覆写项覆盖——勾选「IPv6 DNS Resolve」时 `yml_change.sh` 会强制写入两个 `true`。所以两个模板的差异主要是文档与默认值，真正的开关在 UCI。
+- 两个版本均不使用 `fallback`；域名 DNS 分流完全由 `nameserver-policy` 负责，避免未知域名回落到运营商明文 DNS。
+
 ## 路由器与 BT/PT
 
 - BT 搜索站点（如 BTDigg、Snowfl、Torrentz2 等）单独归入“🔎 BT搜索”策略组；遇到锁区时可在该组手动切换节点。该组只控制搜索网站访问，不改变 BT/PT 下载端口的直连策略。
 - `cfg/Custom_Clash_Base.yaml` 故意不写 `find-process-mode`。请在 OpenClash 覆写设置中明确选择 `OFF`，不要选择仅表示“不覆写”的“禁用/0”。
 - 不要直接在基础 YAML 中写未加引号的 `find-process-mode: off`；YAML 1.1/中间转换器可能把 `off` 当作布尔值，历史提交 `5d33e5c` 至 `6c5cfc0` 已验证该问题会使最终配置失效。
-- 关闭 OpenClash 的“仅代理命中规则流量/Rule Match Proxy Mode”。本模板已有明确的 BT/PT 端口策略，该功能会重复插入对路由器透明代理无意义的进程名规则。
+- **「Rule Match Proxy Mode / 仅代理命中规则流量」（`enable_rule_proxy`）必须为 `0`。** 开启时 OpenClash 会在生成配置时改写规则：把 `GEOIP,<两位国家码>` 改成 `DIRECT`、把 `FINAL` 改成 `MATCH,DIRECT`，并追加一批 `PROCESS-NAME` 规则。实测后果是“🐟 漏网之鱼”整组失效、未匹配流量直接直连，与本文档设计相悖。
+- 关闭“仅代理命中规则流量”后，本模板已经用 `rule/Custom_Port_Direct.yaml` 显式处理了 BT/PT 端口，不需要该功能重复插入对路由器透明代理无意义的进程名规则（`find-process-mode=off` 时这些进程规则本来也永远不匹配）。
 - 固定 BT/Homelab 主机建议在 OpenClash“来源流量访问列表”中按源 IP、TCP+UDP、目标 `RETURN` 绕过纯 IP 流量。Fake-IP 域名流量仍可进入核心并按规则代理。
 - `rule/Custom_Port_Direct.yaml` 有意对整个 LAN 生效：未被更高优先级规则命中的非 80/443 流量默认直连，保证任意内网设备使用 BT/PT 时都能直接连接对等端。
 - 上述端口策略会让其他未识别的自定义端口流量一并直连；这是下载兼容性优先的取舍。
+- IPv6 侧的 BT/PT 入站不受兜底脚本影响（规则只匹配内网主动出网方向），对等连接仍可用原生 IPv6。
 
 ## 运行开销
 
@@ -31,25 +140,12 @@
 - 常规与地区 `url-test` 间隔为 600 秒，下载专用组为 300 秒，避免 Provider 健康检查与多个策略组重复高频测速。
 - 广告拦截仅保留广告联盟、中国区补充和劫持规则；不默认加载大规模 EasyPrivacy，以降低登录、统计和应用功能误杀。广告规则优先于自定义直连规则。
 - 不整套叠加 Loyalsoldier 的 `direct`、`proxy`、`cncidr` 等列表：现有 Geosite/GeoIP 已覆盖其主要用途。遇到漏网域名时，再从其列表按需补充到本地规则。
+- 实测核心常驻内存约 120MB RSS（HWM 约 370MB），3.8GB 内存的 x86 软路由无压力；若长期运行出现内存缓慢增长，可再开 OpenClash 的「自动重启」。
 
-## IPv6 版本选择
+## 目录结构
 
-### 默认无 IPv6 版本
-
-- 使用 `cfg/Custom_Clash.ini`，其基础模板为 `cfg/Custom_Clash_Base.yaml`；顶层 `ipv6` 与 `dns.ipv6` 均为 `false`。
-- OpenClash 覆写中同时关闭 `IPv6` 代理流量、`IPv6 DNS`、`China IPv6 Route` 等 IPv6 相关选项，避免覆写模板值或继续保留 IPv6 绕行路径。
-- 仅修改 Clash/Mihomo YAML 不会关闭 OpenWrt 系统 IPv6。如需彻底关闭公网 IPv6，应停用 WAN6 的 IPv6 地址/前缀获取与委派，并把 LAN 的 `RA 服务`、`DHCPv6 服务`、`NDP 代理` 设为关闭，使终端不再获得可公网路由的 IPv6 地址。
-- OpenWrt 和终端上仍可能存在 `fe80::/10` 链路本地地址；该地址只用于本地链路，不代表仍有公网 IPv6 出口。
-
-### 支持 IPv6 版本
-
-- 使用 `cfg/Custom_Clash_IPv6.ini`，其基础模板为 `cfg/Custom_Clash_Base_IPv6.yaml`；顶层 `ipv6` 与 `dns.ipv6` 均为 `true`。
-- IPv6 基础模板故意不配置 `fake-ip-range6`：国内域名返回真实 AAAA 并走运营商原生 IPv6，境外域名继续使用 IPv4 fake-IP。
-- 目标模式是“IPv4 代理 + 国内 IPv6 原生直连”：OpenClash 覆写中关闭 `IPv6` 代理流量，开启 `IPv6 DNS`，保留 `China IPv6 Route` 与 `respect-rules`；DNS 劫持沿用“Dnsmasq 转发”，并关闭“追加上游 DNS”“追加默认 DNS”。
-- OpenWrt / ImmortalWrt 的 LAN 口建议使用：`RA 服务 = 服务器模式`、`DHCPv6 服务 = 关闭`、`NDP 代理 = 关闭`、`本地 IPv6 DNS 服务器 = 勾选`。如果网络中存在下级 IPv6 路由器、Mesh 或 NDP 代理需求，则保留对应的 DHCPv6/NDP 配置。
-
-### 切换后检查
-
-- 切换 INI 后重新执行订阅转换、更新并应用 OpenClash 配置，同时确认 OpenClash 覆写项与所选版本一致。
-- 让 LAN 客户端重新连接网络或续租地址，并清理旧 DNS 缓存；否则旧 AAAA 记录、IPv6 地址或路由可能影响测试结果。
-- 两个版本均不使用 `fallback`；域名 DNS 分流完全由 `nameserver-policy` 负责，避免未知域名回落到运营商明文 DNS。
+```
+cfg/     OpenClash 订阅转换模板（.ini 入口 + 基础 YAML 模板）
+rule/    自定义规则集（rule-provider，clash-classic 格式）
+script/  需要部署到路由器的自定义脚本（防绕过防火墙规则、配置生成守卫）
+```
