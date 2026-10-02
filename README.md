@@ -6,6 +6,7 @@
 
 - 默认无 IPv6 入口 `cfg/Custom_Clash.ini` 引用 `cfg/Custom_Clash_Base.yaml`；IPv6 入口 `cfg/Custom_Clash_IPv6.ini` 引用 `cfg/Custom_Clash_Base_IPv6.yaml`。两套配置生成时均启用 Fake-IP。
 - 默认与境外域名使用 Cloudflare/Google DoH，并由 `respect-rules` 与域名规则经代理连接；国内域名和命中 `DIRECT` 的目标使用国内 DNS，优先获得本地 CDN 结果。
+- **DoH 解析器已固定为 IPv4 字面量**：`https://1.1.1.1/dns-query` / `https://8.8.8.8/dns-query`（`nameserver` 与 `nameserver-policy` 全部如此）。好处是不再需要为 DoH 域名做 bootstrap 解析、DNS 查询固定走 IPv4（不会因为节点侧解析出 AAAA 而把 DNS 走到境外 IPv6），也规避了 `cloudflare-dns.com` 被污染的可能。这两个 IP 在 `rule/Custom_Proxy_Classical_IP.yaml` 中，`respect-rules` 下依旧经代理连接。
 - 代理节点与 Provider 域名使用运营商 DNS 与阿里 DNS 直连解析，确保 Mihomo 冷启动、Provider 缓存为空时也能先取得节点，避免 DoH 自举回环。
 - **防回归约束：**不要把 `default-nameserver` 或 `proxy-server-nameserver` 全部替换成依赖代理的 DoH；历史提交 `1a09574` 曾因此造成冷启动自举回环，`05aaed2` 已恢复可靠的直连解析链路。
 - 新生成配置的“🚀 手动选择”默认使用“♻️ 自动选择”；“🎯 全球直连”保留为手工回退选项。Provider 首次加载失败时可先手动切至直连排障。
@@ -77,7 +78,13 @@ uci commit openclash
 `dns.ipv6` 只能管住“通过路由器 DNS 解析”的终端。终端自带 DoH、或硬编码 IPv6 DNS 时仍可能拿到境外真实 AAAA 并直连境外 IPv6。因此把 `script/openclash_custom_firewall_rules.sh` 部署到 `/etc/openclash/custom/openclash_custom_firewall_rules.sh`（OpenClash 每次启动后自动调用），它做两件事：
 
 1. **劫持内网 IPv6 DNS**：`53/TCP+UDP` 到任意 IPv6 地址的请求 redirect 到本机 dnsmasq → Mihomo，于是自带 IPv6 DNS 的终端同样拿不到境外 AAAA。
-2. **拒绝非中国大陆 IPv6 出网**：对「从内网进入（`iifname` 内网口）+ 经 WAN 出去（`oifname` WAN 口）+ 目的为 `2000::/3` 且不在 `china_ip6_route` 集合」的流量直接拒绝。TCP 回 RST、UDP 回 ICMPv6 `admin-prohibited`，都是“立刻失败”而不是静默丢包，终端会迅速回落到 IPv4 走代理（实测 TCP 约 2 秒内报 `Connection refused`；若用普通 `reject` 只回 ICMPv6 port-unreachable，Windows 会一直重传到 20 秒超时，故必须用 `reject with tcp reset`）。
+2. **拒绝非中国大陆 IPv6 出网**：对「从内网进入（`iifname` 内网口）+ 经 WAN 出去（`oifname` WAN 口）+ 目的为 `2000::/3` 且不在 `china_ip6_route` 集合」的流量直接拒绝。TCP 必须用 `reject with tcp reset`，UDP 用 ICMPv6 `admin-prohibited`。实测三种写法的终端表现：
+
+| 拒绝写法 | 终端表现 |
+| --- | --- |
+| `reject with tcp reset` | **约 2s 内报 Connection refused** 并回落 IPv4 ✅ |
+| `reject`（默认 ICMPv6 port-unreachable） | Windows 一直重传，拖到 20s 超时 ❌ |
+| `reject with icmpv6 no-route` | Windows 完全不理会，死等到 connect timeout（10s+）❌ |
 
 不会误伤的原因：
 
@@ -168,6 +175,45 @@ NON_CN_IPV6_ALLOW="2606:4700::/32 2a06:98c1::/32"   # 例：Cloudflare
 - 支持 IPv6 版本使用 `cfg/Custom_Clash_IPv6.ini` + `cfg/Custom_Clash_Base_IPv6.yaml`：顶层 `ipv6` 与 `dns.ipv6` 均为 `true`，按上文实现“国内 IPv6 + 境外 IPv4”。
 - 注意：`ipv6` / `dns.ipv6` 会被 OpenClash 覆写项覆盖——勾选「IPv6 DNS Resolve」时 `yml_change.sh` 会强制写入两个 `true`。所以两个模板的差异主要是文档与默认值，真正的开关在 UCI。
 - 两个版本均不使用 `fallback`；域名 DNS 分流完全由 `nameserver-policy` 负责，避免未知域名回落到运营商明文 DNS。
+
+## 客户端自带 SSRF 校验时报「resolves to a non-public IP address」
+
+现象：DeepSeek Harness 的 `web_fetch`（以及任何自带 SSRF 保护的工具、部分 MCP/爬虫）在抓 `raw.githubusercontent.com`、`api.tavily.com` 等境外地址时报：
+
+```
+Error: URL hostname "raw.githubusercontent.com" resolves to a non-public IP address
+```
+
+根因（已定位到代码）：本方案用 fake-IP 模式，境外域名在**路由器 DNS** 上解析成 `198.18.0.0/16`；而这类工具在发请求前会用 `node:dns` 本地解析并逐个校验地址必须是「公网单播」。`198.18.0.0/15` 在 `ipaddr.js` 中归类为 `benchmarking`，不是 `unicast`，于是直接被 `WEB_BLOCKED_URL` 拦掉——**网络其实是通的，是客户端的地址校验过不去**。
+
+```sh
+nslookup raw.githubusercontent.com        # 修复前：198.18.0.8（fake-IP，被判定非公网）
+```
+
+两种解法（可任选，也可同时用）：
+
+**解法 A（推荐给“某个域名老是报错”的场景，本仓库已内置）**：把这些域名放进 `fake-ip-filter`，让它们返回真实公网 IP。流量仍是 IPv4 被 redirect 进内核，再由 TLS SNI 嗅探命中 `GEOSITE,github` / `Download`（含 `githubusercontent.com`）等域名规则走代理，分流不受影响。
+
+```yaml
+# cfg/Custom_Clash_Base_IPv6.yaml 与 cfg/Custom_Clash_Base.yaml 的 dns.fake-ip-filter
+- "+.github.com"
+- "+.githubusercontent.com"
+- "+.githubassets.com"
+- "+.tavily.com"
+```
+
+同时在路由器 `/etc/openclash/custom/openclash_custom_fake_filter.list` 追加同样四行（本地列表立即生效，不依赖订阅转换与 GitHub raw 的 CDN 缓存）。
+注意：这些域名会连带拿到真实 AAAA，双栈终端可能先试一次 IPv6；本方案的 IPv6 兜底规则会立刻拒绝并回落 IPv4（浏览器/curl 有 Happy Eyeballs，实测 github.com 总耗时仍是正常的 ~1.5s）。
+
+**解法 B（通用解，适合“任意网址都可能被抓”的场景）**：让工具走代理，代理侧解析域名时该工具会**跳过**公网校验（其源码注释原文：*"A proxied hop skips those checks because the proxy resolves the origin"*）。DeepSeek Harness 读取代理环境变量，且**只有 Harness home 目录下的 `.env`** 允许设置代理名（`HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY`/`NO_PROXY`，在工作区 `.env` 里设会被拒绝），所以写在 `~/.dsh/.env`（Windows：`C:\Users\<用户>\.dsh\.env`）：
+
+```ini
+HTTP_PROXY=http://Clash:<面板密码>@192.168.2.1:7890
+HTTPS_PROXY=http://Clash:<面板密码>@192.168.2.1:7890
+NO_PROXY=localhost,127.0.0.1,::1
+```
+
+改完**重启 DSH** 生效（启动时读取一次）。取舍：整个 DSH 进程（含模型 API 与 bash 子进程）都走这个代理——国内域名由 OpenClash 规则直连、境外走节点，行为与透明代理一致，但**路由器/OpenClash 不可用时 DSH 的网络也会不可用**；删掉该文件并重启即恢复直连。
 
 ## 路由器与 BT/PT
 
