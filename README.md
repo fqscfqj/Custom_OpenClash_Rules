@@ -108,8 +108,20 @@ nft list set inet fw4 china_ip6_route | head -3
 
 终端侧建议用 `curl -6` / `nslookup ... 2001:4860:4860::8888` 各测一次：国内 IPv6 应能连通，境外 IPv6 应快速失败并回落 IPv4。
 
+2026-10 在本环境实测结果（Windows 终端，`192.168.2.0/24`，DNS 指向路由器）：
+
+| 测试 | 结果 |
+| --- | --- |
+| `nslookup -type=AAAA www.baidu.com / www.taobao.com` | 真实 `2408:871a:...` / `2408:8719:...` |
+| `nslookup -type=AAAA www.google.com / github.com` | 无 AAAA |
+| 用境外 IPv6 DNS `2001:4860:4860::8888` 查询 | 被劫持，返回 Mihomo 结果（`198.18.x.x`，无境外 AAAA） |
+| `curl -6 https://www.taobao.com/` | 200，走 `2408:8719:...`，约 0.1s |
+| `curl -6 https://[2606:4700:4700::1111]/` | 约 2s 内 `Connection refused`（被 RST 拒绝，随即回落 IPv4） |
+| `curl -4 https://www.google.com/` | 200（经代理，约 1.2s） |
+
 ### IPv6 相关常见坑
 
+- 启动日志里出现 `[Warning] Please Note That Network May Abnormal With IPv6's DHCP Server` 属**预期现象**：OpenClash 只要看到「IPv6 代理流量=关闭」且 LAN 的 DHCPv6 服务未禁用就会提示。本方案正是要“有 IPv6 地址、但 IPv6 不进内核”，忽略即可（该提示出现在 `/etc/init.d/openclash` 的 `ipv6_enable=0 && dhcp.lan.dhcpv6 != disabled` 分支）。
 - **不要把 LAN 的 DHCPv6 服务一刀切关掉**。本环境存在下级设备做 DHCPv6-PD（`ip -6 route` 里能看到 `2408:...::/62 via fe80::x dev br-lan` 这类经 br-lan 的委派路由），关掉 DHCPv6 会直接断掉下级网段的 IPv6。只在“确认没有下级 IPv6 路由器/Mesh”时才考虑 `RA=server + DHCPv6=off` 的极简组合。
 - 终端上的 DNS 必须是路由器地址（IPv4 + IPv6 都要有）。若 `odhcpd` 通告的上游/第三方 IPv6 DNS 被终端采用，境外域名会拿到真实 AAAA → 由兜底脚本拒绝（会回落 IPv4），但这属于“靠兜底救回来”，不是正常状态。
 - 修改 IPv6 相关设置后，务必让终端重新获取地址并清 DNS 缓存，否则旧 AAAA 会干扰判断。
