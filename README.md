@@ -1,10 +1,10 @@
 # Custom OpenClash Rules
 
-个人用。路由器 OpenWrt 25.12.5 (x86/64) + OpenClash 0.47.168 + Mihomo Meta。
+个人用。路由器 OpenWrt 25.12.5 (x86/64) + OpenClash 0.47.171 + Mihomo Meta。
 
 ## DNS 防泄漏
 
-- 默认无 IPv6 入口 `cfg/Custom_Clash.ini` 引用 `cfg/Custom_Clash_Base.yaml`；IPv6 入口 `cfg/Custom_Clash_IPv6.ini` 引用 `cfg/Custom_Clash_Base_IPv6.yaml`。两套配置生成时均启用 Fake-IP。
+- 两个订阅入口 `cfg/Custom_Clash.ini` 与 `cfg/Custom_Clash_IPv6.ini` 内容完全一致，都引用唯一的基础模板 `cfg/Custom_Clash_Base.yaml`；IPv4/IPv6 的差异完全由路由器 UCI（`ipv6_dns`）决定，模板不再分两份。两套配置生成时均启用 Fake-IP。
 - 默认与境外域名使用 Cloudflare/Google DoH，并由 `respect-rules` 与域名规则经代理连接；国内域名和命中 `DIRECT` 的目标使用国内 DNS，优先获得本地 CDN 结果。
 - **DoH 解析器已固定为 IPv4 字面量**：`https://1.1.1.1/dns-query` / `https://8.8.8.8/dns-query`（`nameserver` 与 `nameserver-policy` 全部如此）。好处是不再需要为 DoH 域名做 bootstrap 解析、DNS 查询固定走 IPv4（不会因为节点侧解析出 AAAA 而把 DNS 走到境外 IPv6），也规避了 `cloudflare-dns.com` 被污染的可能。这两个 IP 在 `rule/Custom_Proxy_Classical_IP.yaml` 中，`respect-rules` 下依旧经代理连接。
 - 代理节点与 Provider 域名使用运营商 DNS 与阿里 DNS 直连解析，确保 Mihomo 冷启动、Provider 缓存为空时也能先取得节点，避免 DoH 自举回环。
@@ -15,6 +15,71 @@
 - 如必须启用“自定义上游 DNS 服务器”，需在下方“设置自定义上游 DNS 服务器”中至少添加一条 `NameServer` 组服务器，否则 OpenClash 会提示 `配置文件 DNS 选项下的 Nameserver 必须设置服务器`。
 - 端口直连规则已排除 53/784/853/5353/8853，避免 DNS/DoT/DoQ 被直连放行。
 - 浏览器或系统如果启用了“安全 DNS”，请关闭，或确保对应 DoH 域名/IP 会命中代理规则。
+
+## 原生覆写模块（替代配置脚本）
+
+原先用 `script/openclash_custom_overwrite.sh`（ruby 解析回写 YAML）在配置生成后注入几处设置。现在改为 **OpenClash 原生「覆写模块」** `cfg/overwrite/Custom_Clash.conf`：不需要往路由器部署任何脚本，语法与 OpenClash 自带的 `res/overwrite/default` 同源。
+
+`[YAML]` 段在 `yml_change.sh` / `yml_rules_change.sh` 之后合并，因此能覆盖订阅转换与插件脚本的输出。它做三件事：
+
+| 目标 | 覆写写法 | 作用 |
+| --- | --- | --- |
+| `dns.fake-ip-range6` | `fake-ip-range6-:` | 删键。防回归：一旦有值，境外域名会拿到无法路由的 fake IPv6 |
+| 自动选择组 | `proxy-groups*` + `where.name: '/下载自动选择/'` | 注入 `max-failed-times: 2` / `lazy: false` / `timeout: 3000`，掉线后尽快切走 |
+| proxy-provider | `proxy-providers*` + `where.key: '/^.+$/'` | 注入 `health-check.timeout: 3000`（5s → 3s），强制健康检查更快判掉死节点 |
+
+**部署（二选一，改完必须重启 OpenClash；`reload` 不会重跑覆写）**
+
+LuCI（推荐，可定时更新）：运行状态页 →「覆写模块」按钮 → `+ 添加新模块` → 订阅链接 → 填入下面地址 → 保存 → 重启 OpenClash。
+
+命令行（本地文件）：
+
+```sh
+curl -sSL -o /etc/openclash/overwrite/Custom_Clash \
+  https://raw.githubusercontent.com/fqscfqj/Custom_OpenClash_Rules/refs/heads/main/cfg/overwrite/Custom_Clash.conf
+uci add openclash config_overwrite
+uci set openclash.@config_overwrite[-1].name='Custom_Clash'
+uci set openclash.@config_overwrite[-1].type='file'
+uci set openclash.@config_overwrite[-1].enable='1'
+uci set openclash.@config_overwrite[-1].order='3'
+uci add_list openclash.@config_overwrite[-1].config='all'
+uci commit openclash && /etc/init.d/openclash restart
+```
+
+验证：
+
+```sh
+grep -nE 'Overwrite Module|Load YAML Override Block' /tmp/openclash.log
+# 生成配置里不应再有 fake-ip-range6，且下载组应有 max-failed-times
+grep -nE 'fake-ip-range6|max-failed-times' /etc/openclash/<配置名>.yaml
+```
+
+**让模板改动生效（更新订阅）**
+
+`custom_template_url` / `.ini` / 基础模板的改动只在**重新下载订阅**时才会被转换服务读到；重启 OpenClash 只是拿 `config/` 里已有的源配置重新生成一遍，不会重新拉取模板。命令行等价于 LuCI 配置页的「更新」按钮：
+
+```sh
+/usr/share/openclash/openclash.sh '融合'    # 参数是「配置名」，不是文件名
+```
+
+- 参数必须是订阅的**配置名**（如 `融合`）。传 `融合.yaml` 会被函数里的文件名过滤挡掉并**静默 `return 0`**：退出码 0、日志无输出、配置不变，看起来像“更新成功”。LuCI 传的同样是配置名。
+- 要前台执行：BusyBox 环境**没有 `nohup`**，`nohup ... &` 只会打印 `nohup: not found` 后失败。
+- 更新成功后脚本会自行重启 OpenClash，不需要再手动 `restart`。
+
+**实测记录（2026-10-08，OpenWrt 25.12.5 + OpenClash 0.47.171 + mihomo alpha-g9f053c4）**
+
+- **与旧脚本等价**：同一份源配置分别经原生覆写模块与 `script/openclash_custom_overwrite.sh`（旧 ruby 版）生成后逐字段比对，28 个策略组 / 3 个 proxy-provider 语义完全一致，只有下载组内注入键的书写顺序不同（YAML 映射无序，不影响结果）。
+- **删键用真实引擎验证**：把 `fake-ip-range6: fd00::/112` 注入一份临时配置副本，再用 `ruby -rYAML -I /usr/share/openclash -e 'YAML.overwrite_run(ARGV[0], ARGV[1])'` 跑 `[YAML]` 段，该键被删除；线上生成配置里同样不存在。
+- **组过滤按名字生效**：只有 `⬇️ 下载自动选择` 拿到 `max-failed-times: 2` / `lazy: false` / `timeout: 3000`，`♻️ 自动选择` 未被改动；3 个 provider 的 `health-check.timeout` 都变成 3000ms，`interval: 300` 保留。
+- **无重复注入**：删除旧 ruby 脚本后，每轮生成日志只有一条 `Processing Overwrite Module【Custom_Clash】`，不再出现两份注入。
+- **迁移后实测通过**：删掉旧脚本、只留覆写模块，冷重启后 `fake-ip-range6` 不存在、下载组四项注入齐全、国内域名拿到真实 AAAA、境外 AAAA 为空、IPv6 兜底规则与代理链路均正常。
+
+- 操作符速查：`key` 默认合并、`key!` 强制覆盖、`key+` 追加、`key-` 删键/删元素、`key*` 按 `where` 条件批量更新（`set` 里同样支持这些后缀）。`[YAML]` 段里以 `#` / `;` 开头的行会被忽略，不写进配置。
+- 该文件的行为已按 OpenClash `YAML.rb` 覆写引擎做过等价验证：删键、按名字/键名批量更新、以及“只改目标字段、其余字段保留”均符合预期。
+- 该文件按行送进 ruby 覆写引擎（`[YAML]` 段），仓库已用 `.gitattributes` 固定为 LF（`*.conf text eol=lf`），避免 Windows 检出后每行尾部带 `\r`。
+- `script/` 目录只剩防火墙兜底脚本（见下），因为 IPv6 那两条规则没有原生等价物；配置生成阶段已不再需要任何脚本。
+- **迁移提醒**：路由器上若还留着旧的 `/etc/openclash/custom/openclash_custom_overwrite.sh`（本仓库旧版脚本），请删除它或恢复成 OpenClash 自带的模板内容，否则会和覆写模块重复执行同样的注入（结果相同但日志会有两份）。
+- 停用/回滚：把该模块 `enable` 置 0（`uci set openclash.@config_overwrite[N].enable='0'`）或 `uci delete openclash.@config_overwrite[N]`，再重启 OpenClash 即可；删除后不会残留任何配置改动（覆写是每次生成时重新套用，不是一次性写入）。
 
 ## IPv6 分流：国内原生 IPv6，境外一律 IPv4
 
@@ -40,7 +105,7 @@
 
 1. `ipv6: true` 与 `dns.ipv6: true` **必须同时为 true**。任缺其一，AAAA 会被整体清空，国内也会退化成纯 IPv4。
 2. **绝对不要设置 `fake-ip-range6`**。它一旦有值，境外域名就会拿到 fake IPv6，终端会优先尝试这个无法路由的地址。“境外没有 AAAA”正是靠“不写这个键”实现的。
-3. OpenClash 覆写里的「Fake-IP Range (IPv6 Cidr)」保持留空/Disable；`script/openclash_custom_overwrite.sh` 会再删一次该行作为防回归守卫（用 `sed` 精确删行，不再依赖 ruby）。
+3. OpenClash 覆写里的「Fake-IP Range (IPv6 Cidr)」保持留空/Disable；原生覆写模块 `cfg/overwrite/Custom_Clash.conf` 会用 `fake-ip-range6-:` 再删一次该键作为防回归守卫（详见「原生覆写模块」）。
 
 ### 生效链路
 
@@ -76,6 +141,8 @@ uci commit openclash
 ### 防火墙兜底脚本（IPv6 防绕过）
 
 `dns.ipv6` 只能管住“通过路由器 DNS 解析”的终端。终端自带 DoH、或硬编码 IPv6 DNS 时仍可能拿到境外真实 AAAA 并直连境外 IPv6。因此把 `script/openclash_custom_firewall_rules.sh` 部署到 `/etc/openclash/custom/openclash_custom_firewall_rules.sh`（OpenClash 每次启动后自动调用），它做两件事：
+
+> 这是本仓库唯一保留下来的脚本，因为它依赖的机制**没有 OpenClash 原生等价物**：OpenClash 原生的 IPv6 DNS 劫持（`set_firewall()` 里的 IPv6 分支）只在 `openclash.config.ipv6_enable=1`（IPv6 进内核）时才生成，而本方案刻意让 IPv6 不进内核；「拒绝非中国大陆 IPv6 出网」更是完全没有对应选项。它用的是 OpenClash 官方预留的钩子文件（插件自带同名模板），并不是额外发明的旁路。
 
 1. **劫持内网 IPv6 DNS**：`53/TCP+UDP` 到任意 IPv6 地址的请求 redirect 到本机 dnsmasq → Mihomo，于是自带 IPv6 DNS 的终端同样拿不到境外 AAAA。
 2. **拒绝非中国大陆 IPv6 出网**：对「从内网进入（`iifname` 内网口）+ 经 WAN 出去（`oifname` WAN 口）+ 目的为 `2000::/3` 且不在 `china_ip6_route` 集合」的流量直接拒绝。TCP 必须用 `reject with tcp reset`，UDP 用 ICMPv6 `admin-prohibited`。实测三种写法的终端表现：
@@ -169,12 +236,12 @@ NON_CN_IPV6_ALLOW="2606:4700::/32 2a06:98c1::/32"   # 例：Cloudflare
 - 修改 IPv6 相关设置后，务必让终端重新获取地址并清 DNS 缓存，否则旧 AAAA 会干扰判断。
 - 只改 Clash YAML 不会关闭 OpenWrt 系统 IPv6。要彻底关掉公网 IPv6，需要停用 WAN6 的地址/前缀获取与委派，并把 LAN 的 `RA 服务`、`DHCPv6 服务`、`NDP 代理` 全部设为关闭，使终端不再获得可公网路由的 IPv6 地址（`fe80::/10` 链路本地地址仍会存在，属正常现象）。
 
-### 两个版本的差异
+### 两个订阅入口（内容一致，开关在 UCI）
 
-- 默认无 IPv6 版本使用 `cfg/Custom_Clash.ini` + `cfg/Custom_Clash_Base.yaml`：顶层 `ipv6` 与 `dns.ipv6` 均为 `false`，AAAA 全部返回空，终端只能用 IPv4（国内也走 IPv4）。
-- 支持 IPv6 版本使用 `cfg/Custom_Clash_IPv6.ini` + `cfg/Custom_Clash_Base_IPv6.yaml`：顶层 `ipv6` 与 `dns.ipv6` 均为 `true`，按上文实现“国内 IPv6 + 境外 IPv4”。
-- 注意：`ipv6` / `dns.ipv6` 会被 OpenClash 覆写项覆盖——勾选「IPv6 DNS Resolve」时 `yml_change.sh` 会强制写入两个 `true`。所以两个模板的差异主要是文档与默认值，真正的开关在 UCI。
-- 两个版本均不使用 `fallback`；域名 DNS 分流完全由 `nameserver-policy` 负责，避免未知域名回落到运营商明文 DNS。
+- 两个订阅入口 `cfg/Custom_Clash.ini` 与 `cfg/Custom_Clash_IPv6.ini` 内容完全一致（只有首行注释互相指认），都引用同一份基础模板 `cfg/Custom_Clash_Base.yaml`。
+- 基础模板顶层写死 `ipv6: false`：`ipv6_dns=0` 时它就是最终值（AAAA 全空、国内外全走 IPv4）；`ipv6_dns=1` 时 `yml_change.sh` 会强制改写成 `ipv6: true` + `dns.ipv6: true`（国内原生 IPv6 + 境外 IPv4）。因此**真正的开关在 UCI，不在模板**。
+- 保留两个入口只是为了不打断已有的 `custom_template_url` 订阅配置；也可以把订阅统一指向 `cfg/Custom_Clash.ini`，再删掉 IPv6 入口。
+- 两个入口模板均不使用 `fallback`；域名 DNS 分流完全由 `nameserver-policy` 负责，避免未知域名回落到运营商明文 DNS。
 
 ## 客户端自带 SSRF 校验时报「resolves to a non-public IP address」
 
@@ -195,7 +262,7 @@ nslookup raw.githubusercontent.com        # 修复前：198.18.0.8（fake-IP，�
 **解法 A（推荐给“某个域名老是报错”的场景，本仓库已内置）**：把这些域名放进 `fake-ip-filter`，让它们返回真实公网 IP。流量仍是 IPv4 被 redirect 进内核，再由 TLS SNI 嗅探命中 `GEOSITE,github` / `Download`（含 `githubusercontent.com`）等域名规则走代理，分流不受影响。
 
 ```yaml
-# cfg/Custom_Clash_Base_IPv6.yaml 与 cfg/Custom_Clash_Base.yaml 的 dns.fake-ip-filter
+# cfg/Custom_Clash_Base.yaml 的 dns.fake-ip-filter
 - "+.github.com"
 - "+.githubusercontent.com"
 - "+.githubassets.com"
@@ -244,9 +311,9 @@ NO_PROXY=localhost,127.0.0.1,::1
 | --- | --- | --- |
 | `cfg/Custom_Clash.ini` | 下载组 `30,,20` | 只保留 tolerance 20ms；interval 对 provider 节点无效（见下） |
 | `cfg/Custom_Clash.ini` | 其余组 `600,,50` | 低频测速，控制流量开销 |
-| `script/openclash_custom_overwrite.sh` | 组 `max-failed-times: 2`、provider `health-check.timeout: 3000` | 配置生成后注入，掉线切换真正生效的两处 |
+| `cfg/overwrite/Custom_Clash.conf` | 组 `max-failed-times: 2`、provider `health-check.timeout: 3000` | 原生覆写模块在配置生成后注入，掉线切换真正生效的两处 |
 
-`interval[,timeout][,tolerance]` 里只有 **interval 与 tolerance 会写进 Clash 配置**（订阅转换会丢弃 timeout），而 `max-failed-times` / provider 的 `health-check.timeout` 只能在配置生成后由 `script/openclash_custom_overwrite.sh` 注入（该脚本用 ruby 解析回写，与 OpenClash 自身的 `yml_change.sh` / `yml_rules_change.sh` 做法一致——后者在它之前已经把同一份配置整体 `YAML.load_file` + `YAML.dump` 过；脚本回写前会再校验一次能否解析，失败就保留原配置并写日志到 `/tmp/openclash.log`）。
+`interval[,timeout][,tolerance]` 里只有 **interval 与 tolerance 会写进 Clash 配置**（订阅转换会丢弃 timeout），而 `max-failed-times` / provider 的 `health-check.timeout` 只能在配置生成后由原生覆写模块 `cfg/overwrite/Custom_Clash.conf` 注入（`[YAML]` 段在 `yml_change.sh` / `yml_rules_change.sh` 之后合并，可覆盖订阅转换与插件脚本的输出；见「原生覆写模块」）。
 
 ### 为什么“把组里的 interval 调小”没用（2026-10 实测）
 
@@ -318,14 +385,24 @@ curl -s -X DELETE -H "Authorization: Bearer $PW" "http://127.0.0.1:9090/proxies/
 
 - 核心日志默认使用 `error`；排障时可临时切换到 `warning` 或 `info`，完成后恢复。
 - 自动选择组在 `.ini` 里写的 `interval` 只对内联节点生效；本环境全是 provider 节点，实际周期是 provider 的 `health-check.interval`（OpenClash 生成 300 秒，可用 `urltest_interval_mod` 统一改短）。
-- 广告拦截仅保留广告联盟、中国区补充和劫持规则；不默认加载大规模 EasyPrivacy，以降低登录、统计和应用功能误杀。广告规则优先于自定义直连规则。
+- 广告拦截只保留「广告联盟 + 轻量精确广告 + 中国区补充 + 反劫持」四条小列表，不加载 EasyPrivacy / Advertising_Classical 这类十万级列表，以降低登录、统计和应用功能误杀。广告规则优先于自定义直连规则。各列表当前状态（2026-10）：
+
+| 列表 | 条数 | 维护情况 |
+| --- | --- | --- |
+| ACL4SSR `BanAD`（广告联盟/关键词） | ~600 | 仍维护，但更新较慢；内容保守、无副作用 |
+| AWAvenue 秋风广告规则（精确 DOMAIN） | ~965 | **更新频繁**（2026-09 仍在改），轻量、低误杀，适合移动端/家用 |
+| ACL4SSR `BanEasyListChina`（中国区补充） | ~5000 | 仍维护 |
+| blackmatrix7 `Hijacking`（反劫持） | ~228 | 内容稳定，基本不需要更新 |
+
+- 想更省心可以删掉 `BanAD` 与 `BanEasyListChina` 两行、只留秋风广告规则；想更激进（更强拦截）可以把秋风那行换成 blackmatrix7 `Advertising/Advertising_Classical.yaml`（约 28 万条，含 EasyPrivacy，误杀会明显变多）。
 - 不整套叠加 Loyalsoldier 的 `direct`、`proxy`、`cncidr` 等列表：现有 Geosite/GeoIP 已覆盖其主要用途。遇到漏网域名时，再从其列表按需补充到本地规则。
 - 实测核心常驻内存约 120MB RSS（HWM 约 370MB），3.8GB 内存的 x86 软路由无压力；若长期运行出现内存缓慢增长，可再开 OpenClash 的「自动重启」。
 
 ## 目录结构
 
 ```
-cfg/     OpenClash 订阅转换模板（.ini 入口 + 基础 YAML 模板）
-rule/    自定义规则集（rule-provider，clash-classic 格式）
-script/  需要部署到路由器的自定义脚本（防绕过防火墙规则、配置生成守卫）
+cfg/            OpenClash 订阅转换模板（.ini 入口 + 基础 YAML 模板）
+cfg/overwrite/  OpenClash 原生覆写模块（替代原先的配置生成脚本）
+rule/           自定义规则集（rule-provider，clash-classic 格式）
+script/         需要部署到路由器的自定义脚本（目前仅 IPv6 防绕过防火墙规则）
 ```

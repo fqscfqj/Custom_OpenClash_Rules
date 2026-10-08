@@ -1,2 +1,8 @@
+# .gitattributes 自身也用 LF，避免 Windows 检出时被转成 CRLF 而触发警告
+.gitattributes text eol=lf
 # 脚本必须保持 LF，否则路由器上会因 CRLF 无法执行
 *.sh text eol=lf
+# 覆写模块按行送入 ruby 覆写引擎（[YAML] 段），同样固定 LF：
+# CRLF 检出实测仍能正确解析（引擎容忍行尾 \r，init 脚本分类行时也会去掉尾部空白），
+# 但会多出空行噪声，不要依赖这种容错。
+*.conf text eol=lf

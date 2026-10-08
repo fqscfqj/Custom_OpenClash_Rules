@@ -1,13 +1,21 @@
 # ============================================================
-# Custom_Clash_Base — OpenClash 默认无 IPv6 基础模板
+# Custom_Clash_Base — OpenClash 基础模板（IPv4-only / IPv6 通用）
 # 所有参数均通过 OpenClash Web 界面(UCI) + 此模板原生管理
 # mixed-port 由 OpenClash UCI 控制 (openclash.config.mixed_port)
 #
-# 注意：本模板的 ipv6 / dns.ipv6 会被 OpenClash 覆写项覆盖——
-#   只要勾选「IPv6 DNS Resolve」(openclash.config.ipv6_dns=1)，
-#   yml_change.sh 就会强制写入 ipv6: true 与 dns.ipv6: true。
-#   需要“国内 IPv6 + 境外 IPv4”时请改用 Custom_Clash_Base_IPv6.yaml，
-#   并把订阅模板指向 cfg/Custom_Clash_IPv6.ini。
+# 本文件是唯一的基础模板，cfg/Custom_Clash.ini 与
+# cfg/Custom_Clash_IPv6.ini 都引用它：两者的 IPv4/IPv6 行为差异
+# 完全由路由器 UCI 决定，模板本身不需要分两份。
+#
+#   ipv6_dns=0（默认）→ yml_change.sh 写入 dns.ipv6: false，
+#                       顶层 ipv6 保持本文件的 false；AAAA 全部为空，国内外全走 IPv4。
+#   ipv6_dns=1        → yml_change.sh 强制写入 dns.ipv6: true 与 ipv6: true，
+#                       实现“国内原生 IPv6 + 境外 IPv4 代理”（详见 README「IPv6 分流」）。
+#   两条硬约束（缺一 AAAA 会被整体清空，国内也失去 IPv6）：
+#     dns.ipv6 与顶层 ipv6 必须同时为 true；
+#     绝对不要设置 dns.fake-ip-range6（境外会拿到无法路由的 fake IPv6）。
+#   fake-ip-range6 的防回归删除由原生覆写模块
+#   cfg/overwrite/Custom_Clash.conf 兜底（不再需要部署脚本）。
 # ============================================================
 allow-lan: true
 mode: rule
@@ -38,7 +46,10 @@ dns:
   respect-rules: true
   enhanced-mode: fake-ip
   fake-ip-range: 198.18.0.1/16
-  # 无 IPv6 版本不配置 fake-ip-range6。
+  # 故意不写 fake-ip-range6：IPv6 必须解析成真实地址，走运营商原生 IPv6 出口。
+  # 一旦该键有值，境外域名会拿到无法路由的 fake IPv6（fd00::x），终端优先尝试它
+  # 导致卡顿或直连失败；OpenClash 覆写里的「Fake-IP Range (IPv6 Cidr)」请保持留空，
+  # 防回归删除由原生覆写模块 cfg/overwrite/Custom_Clash.conf 兜底。
   fake-ip-filter-mode: blacklist
   fake-ip-filter:
     - "*.lan"
