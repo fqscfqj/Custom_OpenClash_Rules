@@ -227,10 +227,56 @@ NO_PROXY=localhost,127.0.0.1,::1
 - 上述端口策略会让其他未识别的自定义端口流量一并直连；这是下载兼容性优先的取舍。
 - IPv6 侧的 BT/PT 入站不受兜底脚本影响（规则只匹配内网主动出网方向），对等连接仍可用原生 IPv6。
 
+## 策略组自动切换（url-test）
+
+### 内核行为（对照 mihomo 源码确认）
+
+- `url-test` 组的语义是「**在通过健康检查的节点里选延迟最低的那个**」。健康检查失败（超时、状态码不符）的节点会被排除，所以**节点真掉线时组一定会切走**，这与 `tolerance` 无关。
+- `tolerance` 只决定“要不要为了几毫秒去换节点”：当前节点延迟 > 最优节点延迟 + tolerance 才切。它不会阻止掉线切换，但会掩盖“另一个节点明显更快”的情况（差得不够多就不换）。
+- **在面板里点某个节点 = 把它“固定”到该组**（`PUT /proxies/<组名>`）。被固定的节点只要还能通过健康检查就一直是它，**比它快得多的节点也不会被选中**；只有它探测失败时才回落到自动选择。
+- `profile.store-selected: true`（本模板默认开启）会把这种固定写进 `cache.db`，**重启内核、重新生成配置后依旧生效**——“老是选到某个节点上就不移开”最常见的原因就是它。手工选择（`🚀 手动选择`、`⬇️ 下载专用` 这类 select 组）依赖这个开关，所以不要关，要会解固定。
+- `lazy` 默认 `true`：组没被使用时不做健康检查。组空闲一段时间后，一开始下载它可能还握着已经掉线的旧节点。
+- 204 探测只测“握手快不快”，**测不出吞吐**：能秒回 204 但下载不动的节点会一直被当作“可用且最快”。
+
+### 本仓库的设置
+
+| 位置 | 设置 | 说明 |
+| --- | --- | --- |
+| `cfg/Custom_Clash.ini` | 下载组 `10,,20` | 每 10 秒测一次，tolerance 20ms |
+| `cfg/Custom_Clash.ini` | 其余组 `600,,50` | 低频测速，控制流量开销 |
+| `script/openclash_custom_overwrite.sh` | `lazy: false`、`max-failed-times: 2`、`timeout: 3000` | 注入到名字含「下载自动选择」的 url-test/fallback 组 |
+
+`interval[,timeout][,tolerance]` 里只有 **interval 与 tolerance 会写进 Clash 配置**：订阅转换会丢弃 timeout，也无法表达 `lazy` / `max-failed-times`，这三项只能在配置生成后由 `script/openclash_custom_overwrite.sh` 注入（该脚本用 ruby 解析回写，与 OpenClash 自身的 `yml_change.sh` / `yml_rules_change.sh` 做法一致，后者在它之前已经把同一份配置整体 `YAML.load_file` + `YAML.dump` 过；脚本回写前会再校验一次能否解析，失败就保留原配置并写日志到 `/tmp/openclash.log`）。
+
+效果：组空闲时也在测速，掉线在下一个周期内被发现；下载中途节点掉线时，**连续 2 次拨号失败（默认 5 次）即立刻强制一次健康检查**，不必等下一个测速周期。
+
+### 排查与解除“固定节点”
+
+```sh
+# 路由器上执行。面板密码：uci get openclash.config.dashboard_password
+PW=$(uci get openclash.config.dashboard_password)
+G='%E2%AC%87%EF%B8%8F%20%E4%B8%8B%E8%BD%BD%E8%87%AA%E5%8A%A8%E9%80%89%E6%8B%A9'   # ⬇️ 下载自动选择
+
+# now=当前使用；fixed=被固定的节点（非空即被固定）；all=组内节点
+curl -s -H "Authorization: Bearer $PW" "http://127.0.0.1:9090/proxies/$G" \
+  | sed 's/,/\n/g' | grep -E '"now"|"fixed"|"type"'
+
+# 解除固定（仅 url-test / fallback 这类自动组支持，select 组会返回 400）
+curl -s -X DELETE -H "Authorization: Bearer $PW" "http://127.0.0.1:9090/proxies/$G" -o /dev/null -w '%{http_code}\n'
+```
+
+面板（metacubexd）里点节点就是固定，点“自动 / 取消固定”或上面的 `DELETE` 即解除。若 `fixed` 为空而 `now` 仍是某个节点，那就是它确实延迟最低（此时要么接受，要么用下面的过滤排除它）。
+
+### 三个容易踩的点
+
+- **`⬇️ 下载专用` 是 select 组，永远不会自动切换。** 如果下载流量走的是它、而它指向某个单节点（或指向 `🚀 手动选择` 而不是 `⬇️ 下载自动选择`），那“自动切换”根本不会发生。要自动切换，请让它指向 `⬇️ 下载自动选择`。
+- **切换只影响新连接**：已建立的连接（正在下载的任务）会继续挂在旧节点上直到自己断开，卡住的下载需要重试或重新开始。
+- **瓶颈是吞吐而不是延迟时，204 探测无能为力**：想让某些节点彻底不参与下载自动选择，用 `cfg/Custom_Clash.ini` 中注释掉的那行 filter（排除名字含“日本”的节点），或改用 select 组手动指定。
+
 ## 运行开销
 
 - 核心日志默认使用 `error`；排障时可临时切换到 `warning` 或 `info`，完成后恢复。
-- 常规与地区 `url-test` 间隔为 600 秒，下载专用组为 300 秒，避免 Provider 健康检查与多个策略组重复高频测速。
+- 常规与地区 `url-test` 间隔为 600 秒；下载专用组为 10 秒且 `lazy: false`（组内只有 3 个节点，探测流量约 3MB/小时），其余策略组不做高频测速。
 - 广告拦截仅保留广告联盟、中国区补充和劫持规则；不默认加载大规模 EasyPrivacy，以降低登录、统计和应用功能误杀。广告规则优先于自定义直连规则。
 - 不整套叠加 Loyalsoldier 的 `direct`、`proxy`、`cncidr` 等列表：现有 Geosite/GeoIP 已覆盖其主要用途。遇到漏网域名时，再从其列表按需补充到本地规则。
 - 实测核心常驻内存约 120MB RSS（HWM 约 370MB），3.8GB 内存的 x86 软路由无压力；若长期运行出现内存缓慢增长，可再开 OpenClash 的「自动重启」。
