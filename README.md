@@ -123,7 +123,7 @@ grep -nE 'fake-ip-range6|max-failed-times' /etc/openclash/<配置名>.yaml
 | 覆写设置 → IPv6 | `ipv6_enable` | `0` | IPv6 不进内核，避免境外 IPv6 被代理/被节点以 IPv6 送出 |
 | 覆写设置 → IPv6 | `fakeip_range6` / `fake_ip_range6_enable` | 留空 / `0` | 见上面硬约束 2、3 |
 | 覆写设置 → 规则 | `enable_rule_proxy` | `0` | 见「路由器与 BT/PT」中的说明 |
-| 配置文件订阅 | `custom_template_url` | `.../cfg/Custom_Clash_IPv6.ini` | 使用 IPv6 版模板入口 |
+| 配置文件订阅 | `custom_template_url` | `.../cfg/Custom_Clash.ini` | 推荐入口；与 `Custom_Clash_IPv6.ini` 内容完全一致，两者可互换 |
 | 配置文件订阅 | `chnr6_custom_url` | `https://ispip.clang.cn/all_cn_ipv6.txt` | 兜底脚本用它做“中国大陆 IPv6”白名单 |
 
 切换方式（命令行，改完重启 OpenClash 即会重新生成配置）：
@@ -133,7 +133,7 @@ uci set openclash.config.ipv6_dns='1'
 uci set openclash.config.ipv6_enable='0'
 uci set openclash.config.enable_rule_proxy='0'
 uci delete openclash.config.fakeip_range6 2>/dev/null
-uci set openclash.@config_subscribe[0].custom_template_url='https://raw.githubusercontent.com/fqscfqj/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash_IPv6.ini'
+uci set openclash.@config_subscribe[0].custom_template_url='https://raw.githubusercontent.com/fqscfqj/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini'
 uci commit openclash
 /etc/init.d/openclash restart
 ```
@@ -240,7 +240,8 @@ NON_CN_IPV6_ALLOW="2606:4700::/32 2a06:98c1::/32"   # 例：Cloudflare
 
 - 两个订阅入口 `cfg/Custom_Clash.ini` 与 `cfg/Custom_Clash_IPv6.ini` 内容完全一致（只有首行注释互相指认），都引用同一份基础模板 `cfg/Custom_Clash_Base.yaml`。
 - 基础模板顶层写死 `ipv6: false`：`ipv6_dns=0` 时它就是最终值（AAAA 全空、国内外全走 IPv4）；`ipv6_dns=1` 时 `yml_change.sh` 会强制改写成 `ipv6: true` + `dns.ipv6: true`（国内原生 IPv6 + 境外 IPv4）。因此**真正的开关在 UCI，不在模板**。
-- 保留两个入口只是为了不打断已有的 `custom_template_url` 订阅配置；也可以把订阅统一指向 `cfg/Custom_Clash.ini`，再删掉 IPv6 入口。
+- **推荐入口是 `cfg/Custom_Clash.ini`**——名字不再暗示 IPv4-only，两个入口产物完全一致。`cfg/Custom_Clash_IPv6.ini` 内容与它相同（只有首行注释互相指认），仅为不打断历史 `custom_template_url` 配置而保留，可以随时互换或删除。
+- 切换入口（改完重新下载订阅才会生效，见「原生覆写模块」里的更新订阅命令）：`uci set openclash.@config_subscribe[0].custom_template_url='.../cfg/Custom_Clash.ini' && uci commit openclash`；因为两个入口产物一致，切换本身不会改变任何行为。
 - 两个入口模板均不使用 `fallback`；域名 DNS 分流完全由 `nameserver-policy` 负责，避免未知域名回落到运营商明文 DNS。
 
 ## 客户端自带 SSRF 校验时报「resolves to a non-public IP address」
