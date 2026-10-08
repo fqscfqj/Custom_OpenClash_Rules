@@ -26,7 +26,7 @@
 | --- | --- | --- |
 | `dns.fake-ip-range6` | `fake-ip-range6-:` | 删键。防回归：一旦有值，境外域名会拿到无法路由的 fake IPv6 |
 | 自动选择组 | `proxy-groups*` + `where.name: '/下载自动选择/'` | 注入 `max-failed-times: 2` / `lazy: false` / `timeout: 3000`，掉线后尽快切走 |
-| proxy-provider | `proxy-providers*` + `where.key: '/Provider_/'` | 注入 `health-check.timeout: 3000`（5s → 3s），强制健康检查更快判掉死节点 |
+| proxy-provider | `proxy-providers*` + `where.key: '/^.+$/'` | 注入 `health-check.timeout: 3000`（5s → 3s），强制健康检查更快判掉死节点 |
 
 **部署（二选一，改完必须重启 OpenClash；`reload` 不会重跑覆写）**
 
@@ -57,6 +57,8 @@ grep -nE 'fake-ip-range6|max-failed-times' /etc/openclash/<配置名>.yaml
 - 操作符速查：`key` 默认合并、`key!` 强制覆盖、`key+` 追加、`key-` 删键/删元素、`key*` 按 `where` 条件批量更新（`set` 里同样支持这些后缀）。`[YAML]` 段里以 `#` / `;` 开头的行会被忽略，不写进配置。
 - 该文件的行为已按 OpenClash `YAML.rb` 覆写引擎做过等价验证：删键、按名字/键名批量更新、以及“只改目标字段、其余字段保留”均符合预期。
 - `script/` 目录只剩防火墙兜底脚本（见下），因为 IPv6 那两条规则没有原生等价物；配置生成阶段已不再需要任何脚本。
+- **迁移提醒**：路由器上若还留着旧的 `/etc/openclash/custom/openclash_custom_overwrite.sh`（本仓库旧版脚本），请删除它或恢复成 OpenClash 自带的模板内容，否则会和覆写模块重复执行同样的注入（结果相同但日志会有两份）。
+- 停用/回滚：把该模块 `enable` 置 0（`uci set openclash.@config_overwrite[N].enable='0'`）或 `uci delete openclash.@config_overwrite[N]`，再重启 OpenClash 即可；删除后不会残留任何配置改动（覆写是每次生成时重新套用，不是一次性写入）。
 
 ## IPv6 分流：国内原生 IPv6，境外一律 IPv4
 
