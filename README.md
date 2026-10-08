@@ -231,24 +231,65 @@ NO_PROXY=localhost,127.0.0.1,::1
 
 ### 内核行为（对照 mihomo 源码确认）
 
-- `url-test` 组的语义是「**在通过健康检查的节点里选延迟最低的那个**」。健康检查失败（超时、状态码不符）的节点会被排除，所以**节点真掉线时组一定会切走**，这与 `tolerance` 无关。
+- `url-test` 组的语义是「**在通过健康检查的节点里选延迟最低的那个**」，健康检查失败（超时、状态码不符）的节点会被排除。**理论上**节点掉线后组就会切走，但 provider 型组实测会出现“卡在已失效节点上”的情况（见下节），所以不能只依赖它。
 - `tolerance` 只决定“要不要为了几毫秒去换节点”：当前节点延迟 > 最优节点延迟 + tolerance 才切。它不会阻止掉线切换，但会掩盖“另一个节点明显更快”的情况（差得不够多就不换）。
 - **在面板里点某个节点 = 把它“固定”到该组**（`PUT /proxies/<组名>`）。被固定的节点只要还能通过健康检查就一直是它，**比它快得多的节点也不会被选中**；只有它探测失败时才回落到自动选择。
-- `profile.store-selected: true`（本模板默认开启）会把这种固定写进 `cache.db`，**重启内核、重新生成配置后依旧生效**——“老是选到某个节点上就不移开”最常见的原因就是它。手工选择（`🚀 手动选择`、`⬇️ 下载专用` 这类 select 组）依赖这个开关，所以不要关，要会解固定。
-- `lazy` 默认 `true`：组没被使用时不做健康检查。组空闲一段时间后，一开始下载它可能还握着已经掉线的旧节点。
+- `profile.store-selected: true`（本模板默认开启）会把这种固定写进 `cache.db`，**重启内核、重新生成配置后依旧生效**——排查“老是选到某个节点上就不移开”时先看 `fixed` 字段。手工选择（`🚀 手动选择`、`⬇️ 下载专用` 这类 select 组）依赖这个开关，所以不要关，要会解固定。
+- `lazy` 默认 `true`：**组与 provider 都是**——没被使用时不做健康检查。组空闲一段时间后，一开始下载它可能还握着已经掉线的旧节点。
 - 204 探测只测“握手快不快”，**测不出吞吐**：能秒回 204 但下载不动的节点会一直被当作“可用且最快”。
 
 ### 本仓库的设置
 
 | 位置 | 设置 | 说明 |
 | --- | --- | --- |
-| `cfg/Custom_Clash.ini` | 下载组 `10,,20` | 每 10 秒测一次，tolerance 20ms |
+| `cfg/Custom_Clash.ini` | 下载组 `30,,20` | 只保留 tolerance 20ms；interval 对 provider 节点无效（见下） |
 | `cfg/Custom_Clash.ini` | 其余组 `600,,50` | 低频测速，控制流量开销 |
-| `script/openclash_custom_overwrite.sh` | `lazy: false`、`max-failed-times: 2`、`timeout: 3000` | 注入到名字含「下载自动选择」的 url-test/fallback 组 |
+| `script/openclash_custom_overwrite.sh` | 组 `max-failed-times: 2`、provider `health-check.timeout: 3000` | 配置生成后注入，掉线切换真正生效的两处 |
 
-`interval[,timeout][,tolerance]` 里只有 **interval 与 tolerance 会写进 Clash 配置**：订阅转换会丢弃 timeout，也无法表达 `lazy` / `max-failed-times`，这三项只能在配置生成后由 `script/openclash_custom_overwrite.sh` 注入（该脚本用 ruby 解析回写，与 OpenClash 自身的 `yml_change.sh` / `yml_rules_change.sh` 做法一致，后者在它之前已经把同一份配置整体 `YAML.load_file` + `YAML.dump` 过；脚本回写前会再校验一次能否解析，失败就保留原配置并写日志到 `/tmp/openclash.log`）。
+`interval[,timeout][,tolerance]` 里只有 **interval 与 tolerance 会写进 Clash 配置**（订阅转换会丢弃 timeout），而 `max-failed-times` / provider 的 `health-check.timeout` 只能在配置生成后由 `script/openclash_custom_overwrite.sh` 注入（该脚本用 ruby 解析回写，与 OpenClash 自身的 `yml_change.sh` / `yml_rules_change.sh` 做法一致——后者在它之前已经把同一份配置整体 `YAML.load_file` + `YAML.dump` 过；脚本回写前会再校验一次能否解析，失败就保留原配置并写日志到 `/tmp/openclash.log`）。
 
-效果：组空闲时也在测速，掉线在下一个周期内被发现；下载中途节点掉线时，**连续 2 次拨号失败（默认 5 次）即立刻强制一次健康检查**，不必等下一个测速周期。
+### 为什么“把组里的 interval 调小”没用（2026-10 实测）
+
+OpenClash 会把机场订阅转成 **proxy-providers**，生成的自动选择组是这种形式：
+
+```yaml
+- name: "⬇️ 下载自动选择"
+  type: url-test
+  url: https://www.gstatic.com/generate_204
+  interval: 30            # ← 对 provider 节点无效
+  tolerance: 50
+  use: [Provider_5876BE, Provider_30A0C0, Provider_BCBFC6]
+  filter: "(下载专用|下载专享)"
+proxy-providers:
+  Provider_BCBFC6:
+    health-check: {enable: true, url: https://www.gstatic.com/generate_204, interval: 300}   # ← 实际周期
+```
+
+- mihomo 只为 `proxies:`（内联节点）建组级健康检查；组里全是 `use:` 引入的 provider 节点时，组自己的 `interval` / `timeout` / `lazy` 都不会生效。
+- 组级 URL 与 provider 的 `health-check.url` 相同时，mihomo 直接忽略组注册的健康检查任务（`registerHealthCheckTask` 里 `url == hc.url` 即 return），所以“用组里的 interval 覆盖 provider”这条路也走不通。
+- 实测：`GET /providers/proxies/Provider_BCBFC6` 里节点的探测历史严格每 **300 秒**一条（13:52:58 / 13:57:58 / 14:02:58 / 14:07:58 / 14:12:58），正好等于 provider 的 `health-check.interval`。
+- provider 的健康检查默认 `lazy`（只在被使用时测），所以组空闲时状态会一直陈旧。
+
+### 实测到的“卡在死节点上”
+
+2026-10-08 14:0x 在路由器上查 `⬇️ 下载自动选择`：
+
+```json
+{"now":"🇯🇵 日本S05 | 下载专用 | x0.01","fixed":"","type":"URLTest"}
+```
+
+- `fixed` 为空 ⇒ **不是被手动固定**，是组自己选的。
+- 同一时刻 `GET /group/<组>/delay` 只有 `RN自建-下载专用-洛杉矶` 返回 223ms，S05/S06 都没返回；`Provider_BCBFC6` 里 S05/S06 的历史全是 `delay: 0`（不可用）。
+- 即：**组会停在已经不可用的节点上**，直到内核重载。这与 mihomo 的两个已知 issue 描述一致（[#1758](https://github.com/MetaCubeX/mihomo/issues/1758)、[#1298](https://github.com/MetaCubeX/mihomo/issues/1298)：provider 型 url-test 组在当前节点失效后不切换）。
+
+所以在这种结构下“掉线立刻切换”只能做到**尽量快**，做不到**保证**：
+
+1. `max-failed-times: 2`：下载中途节点掉线 → 连续 2 次拨号失败（默认 5 次）立刻强制一次 provider 健康检查，几秒内把死节点判掉（脚本已注入）。
+2. `health-check.timeout: 3000`：强制健康检查里每个死节点少等 2 秒（脚本已注入）。注意 provider 健康检查以 10 并发跑完全部节点，节点多时一轮本身就要几十秒。
+3. 想缩短 provider 周期：`uci set openclash.config.urltest_interval_mod='120' && uci commit openclash`——OpenClash 会同时改写所有 provider 的 `health-check.interval` 和所有自动组的 `interval`。实测每轮 96 个节点，改成 120s 约等于把探测流量提到 2.5 倍。
+4. 卡住时的手动补救：`DELETE /proxies/<组名>`（见下）或重启内核。
+
+**最可靠的做法是不让这两个节点参与自动选择**：把 `cfg/Custom_Clash.ini` 里 `⬇️ 下载自动选择` 换成下面注释掉的那行（排除名字含“日本”的节点），需要时再到 `⬇️ 下载专用`（select 组）里手动指定它们。
 
 ### 排查与解除“固定节点”
 
@@ -276,7 +317,7 @@ curl -s -X DELETE -H "Authorization: Bearer $PW" "http://127.0.0.1:9090/proxies/
 ## 运行开销
 
 - 核心日志默认使用 `error`；排障时可临时切换到 `warning` 或 `info`，完成后恢复。
-- 常规与地区 `url-test` 间隔为 600 秒；下载专用组为 10 秒且 `lazy: false`（组内只有 3 个节点，探测流量约 3MB/小时），其余策略组不做高频测速。
+- 自动选择组在 `.ini` 里写的 `interval` 只对内联节点生效；本环境全是 provider 节点，实际周期是 provider 的 `health-check.interval`（OpenClash 生成 300 秒，可用 `urltest_interval_mod` 统一改短）。
 - 广告拦截仅保留广告联盟、中国区补充和劫持规则；不默认加载大规模 EasyPrivacy，以降低登录、统计和应用功能误杀。广告规则优先于自定义直连规则。
 - 不整套叠加 Loyalsoldier 的 `direct`、`proxy`、`cncidr` 等列表：现有 Geosite/GeoIP 已覆盖其主要用途。遇到漏网域名时，再从其列表按需补充到本地规则。
 - 实测核心常驻内存约 120MB RSS（HWM 约 370MB），3.8GB 内存的 x86 软路由无压力；若长期运行出现内存缓慢增长，可再开 OpenClash 的「自动重启」。
