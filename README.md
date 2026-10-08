@@ -1,6 +1,6 @@
 # Custom OpenClash Rules
 
-个人用。路由器 OpenWrt 25.12.5 (x86/64) + OpenClash 0.47.168 + Mihomo Meta。
+个人用。路由器 OpenWrt 25.12.5 (x86/64) + OpenClash 0.47.171 + Mihomo Meta。
 
 ## DNS 防泄漏
 
@@ -54,8 +54,29 @@ grep -nE 'Overwrite Module|Load YAML Override Block' /tmp/openclash.log
 grep -nE 'fake-ip-range6|max-failed-times' /etc/openclash/<配置名>.yaml
 ```
 
+**让模板改动生效（更新订阅）**
+
+`custom_template_url` / `.ini` / 基础模板的改动只在**重新下载订阅**时才会被转换服务读到；重启 OpenClash 只是拿 `config/` 里已有的源配置重新生成一遍，不会重新拉取模板。命令行等价于 LuCI 配置页的「更新」按钮：
+
+```sh
+/usr/share/openclash/openclash.sh '融合'    # 参数是「配置名」，不是文件名
+```
+
+- 参数必须是订阅的**配置名**（如 `融合`）。传 `融合.yaml` 会被函数里的文件名过滤挡掉并**静默 `return 0`**：退出码 0、日志无输出、配置不变，看起来像“更新成功”。LuCI 传的同样是配置名。
+- 要前台执行：BusyBox 环境**没有 `nohup`**，`nohup ... &` 只会打印 `nohup: not found` 后失败。
+- 更新成功后脚本会自行重启 OpenClash，不需要再手动 `restart`。
+
+**实测记录（2026-10-08，OpenWrt 25.12.5 + OpenClash 0.47.171 + mihomo alpha-g9f053c4）**
+
+- **与旧脚本等价**：同一份源配置分别经原生覆写模块与 `script/openclash_custom_overwrite.sh`（旧 ruby 版）生成后逐字段比对，28 个策略组 / 3 个 proxy-provider 语义完全一致，只有下载组内注入键的书写顺序不同（YAML 映射无序，不影响结果）。
+- **删键用真实引擎验证**：把 `fake-ip-range6: fd00::/112` 注入一份临时配置副本，再用 `ruby -rYAML -I /usr/share/openclash -e 'YAML.overwrite_run(ARGV[0], ARGV[1])'` 跑 `[YAML]` 段，该键被删除；线上生成配置里同样不存在。
+- **组过滤按名字生效**：只有 `⬇️ 下载自动选择` 拿到 `max-failed-times: 2` / `lazy: false` / `timeout: 3000`，`♻️ 自动选择` 未被改动；3 个 provider 的 `health-check.timeout` 都变成 3000ms，`interval: 300` 保留。
+- **无重复注入**：删除旧 ruby 脚本后，每轮生成日志只有一条 `Processing Overwrite Module【Custom_Clash】`，不再出现两份注入。
+- **迁移后实测通过**：删掉旧脚本、只留覆写模块，冷重启后 `fake-ip-range6` 不存在、下载组四项注入齐全、国内域名拿到真实 AAAA、境外 AAAA 为空、IPv6 兜底规则与代理链路均正常。
+
 - 操作符速查：`key` 默认合并、`key!` 强制覆盖、`key+` 追加、`key-` 删键/删元素、`key*` 按 `where` 条件批量更新（`set` 里同样支持这些后缀）。`[YAML]` 段里以 `#` / `;` 开头的行会被忽略，不写进配置。
 - 该文件的行为已按 OpenClash `YAML.rb` 覆写引擎做过等价验证：删键、按名字/键名批量更新、以及“只改目标字段、其余字段保留”均符合预期。
+- 该文件按行送进 ruby 覆写引擎（`[YAML]` 段），仓库已用 `.gitattributes` 固定为 LF（`*.conf text eol=lf`），避免 Windows 检出后每行尾部带 `\r`。
 - `script/` 目录只剩防火墙兜底脚本（见下），因为 IPv6 那两条规则没有原生等价物；配置生成阶段已不再需要任何脚本。
 - **迁移提醒**：路由器上若还留着旧的 `/etc/openclash/custom/openclash_custom_overwrite.sh`（本仓库旧版脚本），请删除它或恢复成 OpenClash 自带的模板内容，否则会和覆写模块重复执行同样的注入（结果相同但日志会有两份）。
 - 停用/回滚：把该模块 `enable` 置 0（`uci set openclash.@config_overwrite[N].enable='0'`）或 `uci delete openclash.@config_overwrite[N]`，再重启 OpenClash 即可；删除后不会残留任何配置改动（覆写是每次生成时重新套用，不是一次性写入）。
