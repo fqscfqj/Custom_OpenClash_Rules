@@ -41,11 +41,15 @@
 config="$1"
 [ -n "$config" ] && [ -f "$config" ] || exit 0
 
-LOG_FILE="/tmp/openclash.log"
-log() {
-	[ -f "$LOG_FILE" ] && echo "[$(date '+%Y-%m-%d %H:%M:%S')] [Custom Overwrite] $*" >>"$LOG_FILE" 2>/dev/null
-	return 0
-}
+# 复用 OpenClash 自己的日志函数：日志面板按 [Info]/[Tip]/[Warning]/[Error] 分级，
+# 直接 echo 不带级别标签的行会被面板归到「严重错误」，看起来像出错。
+if [ -f /usr/share/openclash/log.sh ]; then
+	. /usr/share/openclash/log.sh
+else
+	LOG_FILE="/tmp/openclash.log"
+	LOG_TIP() { [ -n "$1" ] && echo "$(date '+%Y-%m-%d %H:%M:%S') [Tip] $1" >>"$LOG_FILE"; }
+	LOG_WARN() { [ -n "$1" ] && echo "$(date '+%Y-%m-%d %H:%M:%S') [Warning] $1" >>"$LOG_FILE"; }
+fi
 
 # ------------------------------------------------------------
 # 1) 删除 fake-ip-range6
@@ -61,7 +65,7 @@ TARGET_GROUPS="下载自动选择"
 PROVIDER_HC_TIMEOUT="3000"   # provider health-check 超时（毫秒），留空则不动
 PROVIDER_HC_LAZY=""          # 填 false 让 provider 空闲时也测速；留空保持 OpenClash 的默认（lazy）
 
-command -v ruby >/dev/null 2>&1 || { log "ruby not found, skip group hardening"; exit 0; }
+command -v ruby >/dev/null 2>&1 || { LOG_WARN "Custom Overwrite: 未找到 ruby，跳过策略组加固"; exit 0; }
 
 patched="$config.ocnew"
 patch_log="/tmp/openclash_custom_overwrite.out"
@@ -112,12 +116,12 @@ if ruby -ryaml -E UTF-8 -e '
 	# 回写前先确认新文件仍能被解析，避免把配置写坏
 	if ruby -ryaml -E UTF-8 -e 'YAML.respond_to?(:unsafe_load_file) ? YAML.unsafe_load_file(ARGV[0]) : YAML.load_file(ARGV[0])' "$patched" >/dev/null 2>&1; then
 		cat "$patched" >"$config"
-		log "hardened: $(cat "$patch_log" 2>/dev/null)"
+		LOG_TIP "Custom Overwrite 加固完成: $(cat "$patch_log" 2>/dev/null)"
 	else
-		log "hardening skipped: patched config unparsable"
+		LOG_WARN "Custom Overwrite: 加固后的配置无法解析，保留原配置"
 	fi
 else
-	log "hardening failed: $(cat "$patch_log" 2>/dev/null)"
+	LOG_WARN "Custom Overwrite: 加固失败，保留原配置: $(cat "$patch_log" 2>/dev/null)"
 fi
 
 rm -f "$patched" "$patch_log"
