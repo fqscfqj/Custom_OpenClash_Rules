@@ -246,7 +246,7 @@ NON_CN_IPV6_ALLOW="2606:4700::/32 2a06:98c1::/32"   # 例：Cloudflare
 
 ## 客户端自带 SSRF 校验时报「resolves to a non-public IP address」
 
-现象：DeepSeek Harness 的 `web_fetch`（以及任何自带 SSRF 保护的工具、部分 MCP/爬虫）在抓 `raw.githubusercontent.com`、`api.tavily.com` 等境外地址时报：
+现象：自带 SSRF 保护的工具（部分 MCP/爬虫，以及 DeepSeek Harness 的 `web_fetch`）在抓 `raw.githubusercontent.com`、`api.tavily.com` 等境外地址时报：
 
 ```
 Error: URL hostname "raw.githubusercontent.com" resolves to a non-public IP address
@@ -255,25 +255,38 @@ Error: URL hostname "raw.githubusercontent.com" resolves to a non-public IP addr
 根因（已定位到代码）：本方案用 fake-IP 模式，境外域名在**路由器 DNS** 上解析成 `198.18.0.0/16`；而这类工具在发请求前会用 `node:dns` 本地解析并逐个校验地址必须是「公网单播」。`198.18.0.0/15` 在 `ipaddr.js` 中归类为 `benchmarking`，不是 `unicast`，于是直接被 `WEB_BLOCKED_URL` 拦掉——**网络其实是通的，是客户端的地址校验过不去**。
 
 ```sh
-nslookup raw.githubusercontent.com        # 修复前：198.18.0.8（fake-IP，被判定非公网）
+nslookup raw.githubusercontent.com        # 198.18.0.8（fake-IP，被判定非公网）
 ```
 
-两种解法（可任选，也可同时用）：
+### DeepSeek Harness：插件解决，路由器不做让步
 
-**解法 A（推荐给“某个域名老是报错”的场景，本仓库已内置）**：把这些域名放进 `fake-ip-filter`，让它们返回真实公网 IP。流量仍是 IPv4 被 redirect 进内核，再由 TLS SNI 嗅探命中 `GEOSITE,github` / `Download`（含 `githubusercontent.com`）等域名规则走代理，分流不受影响。
+DSH 侧改用插件，路由器与订阅不再需要为它做任何特殊处理：
+**[fqscfqj/dsh-web-fetch-fakeip](https://github.com/fqscfqj/dsh-web-fetch-fakeip)**
+
+它复用上游 `dsh-web-fetch-http` 的 provider，只把地址校验放宽到配置的 `allowCidrs`
+（填 `fake-ip-range` 即可），环回 / RFC1918 / link-local / CGNAT / 云元数据地址仍然全部拦死。
+插件是 userland 文件 + 一段 profile 补丁，DSH 升级不覆盖。
+
+因此本仓库**不再内置** `fake-ip-filter` 放行条目，路由器本地列表里对应的四行也已移除：
+`github*` / `tavily` 重新拿到 fake-IP，流量依旧被 redirect 进内核，由 TLS SNI 嗅探命中
+`GEOSITE,github` / `Download`（含 `githubusercontent.com`）等域名规则走代理，分流不受影响。
+
+### 其它工具仍报错时：按域名单独放行
+
+若某个没有插件机制的工具（第三方 MCP、爬虫）仍然报同样的错，再针对那一个域名放行即可：
 
 ```yaml
 # cfg/Custom_Clash_Base.yaml 的 dns.fake-ip-filter
-- "+.github.com"
-- "+.githubusercontent.com"
-- "+.githubassets.com"
-- "+.tavily.com"
+- "+.example.com"
 ```
 
-同时在路由器 `/etc/openclash/custom/openclash_custom_fake_filter.list` 追加同样四行（本地列表立即生效，不依赖订阅转换与 GitHub raw 的 CDN 缓存）。
-注意：这些域名会连带拿到真实 AAAA，双栈终端可能先试一次 IPv6；本方案的 IPv6 兜底规则会立刻拒绝并回落 IPv4（浏览器/curl 有 Happy Eyeballs，实测 github.com 总耗时仍是正常的 ~1.5s）。
+并在路由器 `/etc/openclash/custom/openclash_custom_fake_filter.list` 追加同样一行
+（本地列表不依赖 GitHub raw 的 CDN 缓存）。
+注意：这类域名会连带拿到真实 AAAA，双栈终端可能先试一次 IPv6；本方案的 IPv6 兜底规则会立刻拒绝并回落 IPv4（实测 github.com 总耗时仍是正常的 ~1.5s）。
 
-**解法 B（通用解，适合“任意网址都可能被抓”的场景）**：让工具走代理，代理侧解析域名时该工具会**跳过**公网校验（其源码注释原文：*"A proxied hop skips those checks because the proxy resolves the origin"*）。DeepSeek Harness 读取代理环境变量，且**只有 Harness home 目录下的 `.env`** 允许设置代理名（`HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY`/`NO_PROXY`，在工作区 `.env` 里设会被拒绝），所以写在 `~/.dsh/.env`（Windows：`C:\Users\<用户>\.dsh\.env`）：
+### 通用兜底：让工具走代理
+
+让工具走代理，代理侧解析域名时该工具会**跳过**公网校验（其源码注释原文：*"A proxied hop skips those checks because the proxy resolves the origin"*）。DeepSeek Harness 读取代理环境变量，且**只有 Harness home 目录下的 `.env`** 允许设置代理名（`HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY`/`NO_PROXY`，在工作区 `.env` 里设会被拒绝），所以写在 `~/.dsh/.env`（Windows：`C:\Users\<用户>\.dsh\.env`）：
 
 ```ini
 HTTP_PROXY=http://Clash:<面板密码>@192.168.2.1:7890
