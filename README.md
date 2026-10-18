@@ -126,6 +126,7 @@ grep -nE 'fake-ip-range6|max-failed-times' /etc/openclash/<配置名>.yaml
 | 覆写设置 → IPv6 | `fakeip_range6` / `fake_ip_range6_enable` | 留空 / `0` | 见上面硬约束 2、3 |
 | 覆写设置 → 规则 | `enable_rule_proxy` | `0` | 见「路由器与 BT/PT」中的说明 |
 | 插件设置 → DNS | `enable_redirect_dns` | `2` | 防火墙转发：LAN 的 `53` 直接 redirect 到内核 `7874`，Dnsmasq 不参与解析 |
+| 访问控制 → WAN 绕过端口 | `wan_ac_black_ports` | `53` | 让境外 UDP 53 落到 DNS 劫持，而不是被 `openclash_mangle` 的透明 UDP 代理接走 |
 | 配置文件订阅 | `custom_template_url` | `.../cfg/Custom_Clash.ini` | 推荐入口；与 `Custom_Clash_IPv6.ini` 内容完全一致，两者可互换 |
 | 配置文件订阅 | `chnr6_custom_url` | 可保留或删除 | 原供 IPv6 兜底脚本取“中国大陆 IPv6”白名单；脚本已移除，留着无副作用 |
 
@@ -145,12 +146,12 @@ uci commit openclash
 
 切到「防火墙转发」后 Dnsmasq 不再转发到 Mihomo，原先挂在 `/etc/openclash/custom/openclash_custom_firewall_rules.sh` 里的两条规则（把内网 IPv6 DNS 劫持到 dnsmasq、拒绝非中国大陆 IPv6 出网）都失去了原有作用，因此整份脚本已删除：仓库里 `script/openclash_custom_firewall_rules.sh` 移除，路由器上的同名文件也已删除（备份在 `/root/oc-backup-20261018/`）。
 
-**当前 DNS 路径：** LAN 的 IPv4 `53/TCP+UDP` 由 nftables（`openclash_dns_redirect` 链）redirect 到 `:7874`，所以国内域名拿到真实 A/AAAA、境外域名只拿到 fake IPv4、AAAA 为空。有两种查询到不了这里：
+**当前 DNS 路径：** LAN 的 IPv4 `53/TCP+UDP` 全部由 nftables（`openclash_dns_redirect` 链）redirect 到 `:7874`，所以国内域名拿到真实 A/AAAA、境外域名只拿到 fake IPv4、AAAA 为空。
 
-- **IPv6 地址上的 DNS**：OpenClash 原生劫持只匹配 `nfproto ipv4`，这类查询由 dnsmasq/上游直接解析。
-- **发往境外地址的 UDP 53**：会先被 `openclash_mangle` 的透明 UDP 代理（`tproxy :7895`，`enable_udp_proxy=1`）接走，命中不了 DNS 劫持。实测 `dig @8.8.8.8`（UDP）超时，而 `dig +tcp @8.8.8.8` 正常返回 fake-IP；发往国内 IP 的 UDP 53（119.29.29.29、223.5.5.5、114.114.114.114）因为 `china_ip_route` 提前 `return`，能正常进内核。这是本机 UDP 代理的既有行为，与本次切换无关（Dnsmasq 转发模式下同样如此）。
+- **必须把 53 加进 `wan_ac_black_ports`（「WAN 绕过端口」）**：`openclash_mangle` 里有一条泛化的透明 UDP 代理（`tproxy :7895`，`enable_udp_proxy=1`），它在 dstnat 之前执行，会把发往境外地址的 UDP 53（`8.8.8.8`、`1.1.1.1` 等）当成普通 UDP 流量接走 → 表现为 dig 超时。加上 53 后该链提前 `return`，查询才能落到 DNS 劫持链；实测 `dig @8.8.8.8`、`dig @1.1.1.1` 都返回 `198.18.x.x`。
+- **IPv6 地址上的 DNS** 仍不在 OpenClash 原生劫持范围内（规则只匹配 `nfproto ipv4`），这类查询由 dnsmasq/上游直接解析。
 
-结论：终端用路由器 IPv4 或国内 DNS 都能被接管；把境外地址填成 DNS 时，UDP 查询会失败（失败关闭，不会泄漏）。
+局域网主机名（DHCP 租约名）由 `nameserver-policy` 的 `"+.lan": 127.0.0.1:53` 交回 dnsmasq：防火墙转发模式下 dnsmasq 已不再指向 7874，不会形成回环；实测 `m910s.lan` 解析正常。
 
 **代价（2026-10-18 切换后实测）：**
 
@@ -159,7 +160,7 @@ uci commit openclash
 | 终端硬编码境外 IPv6 DNS（如 `2001:4860:4860::8888`） | 被 53 劫持到 Mihomo，境外无 AAAA | 直接经上游递归解析，可能拿到真实/污染 AAAA（实测 `www.google.com` → `2001::1`） |
 | 终端用路由器的 IPv6 地址做 DNS | 同样被劫持到 Mihomo | 由 dnsmasq 用运营商 DNS 解析，结果同上 |
 | 终端拿到境外可用 AAAA | 内网→WAN 的境外 IPv6 被 `reject with tcp reset`，约 2s 回落 IPv4 | 不再拦截：能通的站直连（绕过代理），不通的站挂到超时（实测 `curl -6` 到 Cloudflare 8s 超时） |
-| 局域网主机名（DHCP 租约名，如 `m910s.lan`） | 由 dnsmasq 解析 | 解析失败：DNS 全部落到内核，内核里只有 `openwrt.lan` 这类写死条目 |
+| 局域网主机名（DHCP 租约名，如 `m910s.lan`） | 由 dnsmasq 解析 | 由 `nameserver-policy` 指回 dnsmasq，解析正常 |
 
 需要恢复其中任一条能力时，从 git 历史取回脚本即可（`git show <commit>:script/openclash_custom_firewall_rules.sh`），也可以只保留「拒绝境外 IPv6」那一段；恢复时注意把 IPv6 DNS 劫持的目标从 `:53` 改成 `:7874`，否则规则会落到已不转发 Mihomo 的 dnsmasq 上。
 
@@ -179,8 +180,14 @@ nslookup -type=A    www.google.com 192.168.2.1    # 期望 198.18.x.x
 
 # 3) 确认劫持方式是防火墙转发，且 Dnsmasq 已退出解析链路
 uci get openclash.config.enable_redirect_dns          # 期望 2
+uci get openclash.config.wan_ac_black_ports           # 期望 53
 nft list chain inet fw4 openclash_dns_redirect        # 期望 redirect to :7874
+nft list set inet fw4 wan_ac_black_ports              # 期望 elements = { 53 }
 uci show dhcp | grep '127.0.0.1#7874'                 # 期望为空
+
+# 4) 境外 UDP DNS 与局域网主机名
+dig @8.8.8.8 www.google.com A                         # 期望 198.18.x.x（境外 UDP 53 也被接管）
+dig <主机名>.lan                                      # 期望对应 LAN IP
 ```
 
 终端侧：`curl -6 https://www.taobao.com/` 应通；境外 IPv6 不再被快速拒绝（直连或超时），这是移除脚本后的预期行为。
