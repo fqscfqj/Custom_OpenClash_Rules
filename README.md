@@ -145,7 +145,12 @@ uci commit openclash
 
 切到「防火墙转发」后 Dnsmasq 不再转发到 Mihomo，原先挂在 `/etc/openclash/custom/openclash_custom_firewall_rules.sh` 里的两条规则（把内网 IPv6 DNS 劫持到 dnsmasq、拒绝非中国大陆 IPv6 出网）都失去了原有作用，因此整份脚本已删除：仓库里 `script/openclash_custom_firewall_rules.sh` 移除，路由器上的同名文件也已删除（备份在 `/root/oc-backup-20261018/`）。
 
-**当前 DNS 路径：** LAN 的 **IPv4** `53/TCP+UDP` 由 nftables（`openclash_dns_redirect` 链）直接 redirect 到 `:7874`，与终端填哪个 DNS 地址无关（`223.5.5.5` 这类明文公共 DNS 同样被接管），所以国内域名拿到真实 A/AAAA、境外域名只拿到 fake IPv4、AAAA 为空。**IPv6 地址上的 DNS 查询不在 OpenClash 原生劫持范围内**（它的规则只匹配 `nfproto ipv4`）。
+**当前 DNS 路径：** LAN 的 IPv4 `53/TCP+UDP` 由 nftables（`openclash_dns_redirect` 链）redirect 到 `:7874`，所以国内域名拿到真实 A/AAAA、境外域名只拿到 fake IPv4、AAAA 为空。有两种查询到不了这里：
+
+- **IPv6 地址上的 DNS**：OpenClash 原生劫持只匹配 `nfproto ipv4`，这类查询由 dnsmasq/上游直接解析。
+- **发往境外地址的 UDP 53**：会先被 `openclash_mangle` 的透明 UDP 代理（`tproxy :7895`，`enable_udp_proxy=1`）接走，命中不了 DNS 劫持。实测 `dig @8.8.8.8`（UDP）超时，而 `dig +tcp @8.8.8.8` 正常返回 fake-IP；发往国内 IP 的 UDP 53（119.29.29.29、223.5.5.5、114.114.114.114）因为 `china_ip_route` 提前 `return`，能正常进内核。这是本机 UDP 代理的既有行为，与本次切换无关（Dnsmasq 转发模式下同样如此）。
+
+结论：终端用路由器 IPv4 或国内 DNS 都能被接管；把境外地址填成 DNS 时，UDP 查询会失败（失败关闭，不会泄漏）。
 
 **代价（2026-10-18 切换后实测）：**
 
