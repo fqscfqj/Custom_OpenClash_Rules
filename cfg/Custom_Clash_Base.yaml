@@ -101,6 +101,10 @@ dns:
   direct-nameserver-follow-policy: false
   # DNS 服务器域名本身仍由 default-nameserver 直连解析，避免自举回环。
   nameserver-policy:
+    # 局域网主机名（DHCP 租约名）交给 dnsmasq 解析：防火墙转发模式下
+    # LAN 的 53 全部落到内核，dnsmasq 仍持有租约，且它已不再指向 7874，无回环。
+    "+.lan":
+      - 127.0.0.1:53
     "geosite:private":
       - 202.102.152.3
       - 223.5.5.5
