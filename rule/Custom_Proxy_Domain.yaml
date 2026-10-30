@@ -1,10 +1,12 @@
 # Generated from rule/Custom_Proxy.list
 # REPO: https://github.com/Aethersailor/Custom_OpenClash_Rules
 # SOURCE: https://github.com/Aethersailor/Custom_OpenClash_Rules/blob/main/rule/Custom_Proxy.list
-# TOTAL: 27
+# TOTAL: 26
 # NOTE: 已移除被 GEOSITE,google 覆盖的冗余项(gstatic.com/clientservices.googleapis.com/mtalk.google.com/dns.google)
 #       已移除被 GEOSITE,microsoft 覆盖的冗余项(onedrive.live.com)
-#       Google Play 下载链路依赖 googleapis.cn/services.googleapis.cn，明确强制代理
+#       Google Play 下载链路依赖 googleapis.cn/services.googleapis.cn 走代理；
+#       但 xn--ngstr-lra8j.com 是 Play 的境内 CDN（解析到 114.250.x.x），
+#       只能直连，已移到 Custom_Clash.ini 中先于 GEOSITE,google-play 的直连规则
 #       afdian.com 中国可达，已转 Custom_Direct_Domain
 
 payload:
@@ -18,7 +20,6 @@ payload:
   - DOMAIN-SUFFIX,ipify.org
   - DOMAIN-SUFFIX,platformio.org
   - DOMAIN-SUFFIX,stun.playstation.net
-  - DOMAIN-SUFFIX,xn--ngstr-lra8j.com
   - DOMAIN-SUFFIX,googleapis.cn
   - DOMAIN-SUFFIX,services.googleapis.cn
   - DOMAIN-SUFFIX,amd.com

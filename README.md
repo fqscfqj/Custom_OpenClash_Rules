@@ -16,6 +16,43 @@
 - 端口直连规则已排除 53/784/853/5353/8853，避免 DNS/DoT/DoQ 被直连放行。
 - 浏览器或系统如果启用了“安全 DNS”，请关闭，或确保对应 DoH 域名/IP 会命中代理规则。
 
+## Google Play 无法更新/下载（境内 CDN 被误送代理）
+
+**症状：** 商店能正常浏览，但点「更新」后一直停在「正在等待下载」或进度 0%，换节点也没用，其他应用上网正常。
+
+**原因：** Play 的 APK 下载走 `rr1|rr2|rr3---sn-*.xn--ngstr-lra8j.com`，该域名解析到**境内** GGC 缓存节点（实测 `114.250.66.2`，北京联通，ping 19ms）。它命中 `GEOSITE,google-play` 被送进代理后，境外节点既解析不出这个域名、也回连不了这个境内 IP，每次 12s 超时；Play 每 13 秒重试一次，于是永远「等待下载」。
+
+**实测（2026-10-30，本线路）：**
+
+| 路径 | 结果 |
+| --- | --- |
+| 经代理（🇭🇰 香港S02）访问 `rr1---sn-2x3eenez.xn--ngstr-lra8j.com` | 12s 超时（`curl` 返回 000） |
+| 直连同一域名（`--resolve` 到 `114.250.66.2`） | 404，0.08s |
+| 修复后（规则直连） | 404，0.078s，`/rules` 中 `hitCount` 增长 |
+
+**修复：** 必须**先于** `GEOSITE,google-play` 直连。写进 `Custom_Direct_Domain` 无效——那个规则集排在 `GEOSITE,google-play` 之后：
+
+```
+ruleset=🎯 全球直连,[]DOMAIN-SUFFIX,xn--ngstr-lra8j.com
+ruleset=🚀 手动选择,[]GEOSITE,google-play
+```
+
+该顺序已固定在 `cfg/Custom_Clash.ini`。要点：`GEOSITE,google-play` 只该覆盖商店页面/API（`play.googleapis.com`、`play-fe.googleapis.com`、`play-lh.googleusercontent.com`），**不能**把境内 CDN 域名一起塞进代理。
+
+路由器侧临时生效（不动订阅）用 OpenClash「自定义规则」：该文件被插到规则表**最顶部**，但必须同时打开 `enable_custom_clash_rules`，否则整份文件被忽略（这是最容易漏的一步）：
+
+```
+uci set openclash.config.enable_custom_clash_rules='1'
+uci commit openclash
+# /etc/openclash/custom/openclash_custom_rules.list 的 rules: 下加一行
+#   - DOMAIN-SUFFIX,xn--ngstr-lra8j.com,DIRECT
+/etc/init.d/openclash restart
+# 验证：该规则应为 index 0
+curl -s -H "Authorization: Bearer <secret>" http://127.0.0.1:9090/rules | head -c 200
+```
+
+**排查要点：** 用 `/dns/query` 看真实解析（绕过 fake-ip），再看 `/rules` 的 `hitCount`；只测「商店能不能打开」会误判——浏览和下载走的是不同域名。
+
 ## 原生覆写模块（替代配置脚本）
 
 原先用 `script/openclash_custom_overwrite.sh`（ruby 解析回写 YAML）在配置生成后注入几处设置。现在改为 **OpenClash 原生「覆写模块」** `cfg/overwrite/Custom_Clash.conf`：不需要往路由器部署任何脚本，语法与 OpenClash 自带的 `res/overwrite/default` 同源。
