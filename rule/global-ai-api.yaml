@@ -6,7 +6,6 @@
 
 payload:
   - DOMAIN-SUFFIX,openai.com
-  - DOMAIN-SUFFIX,opencode.ai
   - DOMAIN-SUFFIX,chatgpt.com
   - DOMAIN-SUFFIX,oaistatic.com
   - DOMAIN-SUFFIX,oaiusercontent.com
@@ -30,5 +29,3 @@ payload:
   - DOMAIN-SUFFIX,hf.co
   - DOMAIN-SUFFIX,api.meta.ai
   - DOMAIN-SUFFIX,api.xiaomimimo.com
-  - DOMAIN-SUFFIX,api.commandcode.ai
-  - DOMAIN-SUFFIX,cline.bot
